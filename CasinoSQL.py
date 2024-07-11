@@ -98,5 +98,10 @@ ADD LOSSES INT NOT NULL DEFAULT(0)
 """
 #cursor.execute(sql_command)
 
+sql_command = """INSERT INTO HISTORY VALUES('2024-07-11-08:31:44', 'Slots', 'user4', 'Loss','750')"""
+cursor.execute(sql_command)
+sql_command = """INSERT INTO HISTORY VALUES('2024-07-11-09:23:26', 'Craps', 'user2', 'Win','250')"""
+cursor.execute(sql_command)
+
 database.commit()
 database.close()
