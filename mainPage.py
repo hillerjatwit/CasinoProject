@@ -71,6 +71,9 @@ def play_blackjack():
 def play_slots():
     messagebox.showinfo("Slots", "Starting Slots game...")
 
+def play_roulette():
+    messagebox.showinfo("Roulette", "Starting Roulette game...")
+
 def play_other_games():
     messagebox.showinfo("Other Games", "Starting other casino games...")
 
@@ -140,6 +143,9 @@ blackjack_button.pack(pady=10)
 
 slots_button = ttk.Button(main_frame, text="Play Slots", command=play_slots)
 slots_button.pack(pady=10)
+
+roulette_button = ttk.Button(main_frame, text="Play Roulette", command=play_roulette)
+roulette_button.pack(pady=10)
 
 other_games_button = ttk.Button(main_frame, text="Play Other Games", command=play_other_games)
 other_games_button.pack(pady=10)
