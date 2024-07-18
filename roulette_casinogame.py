@@ -91,13 +91,14 @@ def show_roulette_board():
 def start_game():
     clear_game_frame()
     tk.Label(game_frame, text="Enter your starting amount of money:").pack(pady=10)
+    initial_money_entry = ttk.Entry(game_frame)
     initial_money_entry.pack(pady=10)
-    tk.Button(game_frame, text="Submit", command=set_initial_money).pack(pady=10)
+    tk.Button(game_frame, text="Submit", command=lambda: set_initial_money(initial_money_entry)).pack(pady=10)
     tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
     game_frame.pack(padx=20, pady=20)
 
 # Function to set the initial amount of money
-def set_initial_money():
+def set_initial_money(initial_money_entry):
     global total_money
     try:
         total_money = int(initial_money_entry.get())
@@ -113,15 +114,16 @@ def set_initial_money():
 def ask_bet_amount():
     clear_game_frame()
     tk.Label(game_frame, text="Place your bet amount ($10 per round):").pack(pady=10)
+    bet_amount_entry = ttk.Entry(game_frame)
     bet_amount_entry.pack(pady=10)
-    tk.Button(game_frame, text="Next", command=ask_bet_type).pack(pady=10)
+    tk.Button(game_frame, text="Next", command=lambda: ask_bet_type(bet_amount_entry)).pack(pady=10)
     tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
     game_frame.pack(padx=20, pady=20)
 
 # Function to ask for bet type
-def ask_bet_type():
+def ask_bet_type(bet_amount_entry):
     global bet_amount
-    if not validate_bet_amount():
+    if not validate_bet_amount(bet_amount_entry):
         return
     if bet_amount > total_money:
         messagebox.showerror("Invalid Bet", "You don't have enough money to place this bet.")
@@ -137,7 +139,7 @@ def ask_bet_type():
     game_frame.pack(padx=20, pady=20)
 
 # Function to validate bet amount input
-def validate_bet_amount():
+def validate_bet_amount(bet_amount_entry):
     try:
         global bet_amount
         bet_amount = int(bet_amount_entry.get())
@@ -153,31 +155,31 @@ def ask_bet_details():
     clear_game_frame()
     bet_type = bet_type_var.get()
     entry_widgets = {
-        1: [("Enter the number to bet on (0-36):", entry_bet_number)],
-        2: [("Enter the first adjacent number to bet on (0-36):", entry_bet_number1), ("Enter the second adjacent number to bet on (0-36):", entry_bet_number2)],
-        3: [("Enter the street number to bet on (0-34):", entry_bet_number)],
-        4: [("Enter '0' for black or '1' for red:", entry_bet_color)],
-        5: [("Enter '0' for even or '1' for odd:", entry_bet_even_odd)],
-        6: [("Enter '1' for Column 1, '2' for Column 2, or '3' for Column 3:", entry_bet_column)],
-        7: [("Enter '1' for high or '2' for low:", entry_bet_high_low)],
+        1: [("Enter the number to bet on (0-36):", ttk.Entry(game_frame))],
+        2: [("Enter the first adjacent number to bet on (0-36):", ttk.Entry(game_frame)), ("Enter the second adjacent number to bet on (0-36):", ttk.Entry(game_frame))],
+        3: [("Enter the street number to bet on (0-34):", ttk.Entry(game_frame))],
+        4: [("Enter '0' for black or '1' for red:", ttk.Entry(game_frame))],
+        5: [("Enter '0' for even or '1' for odd:", ttk.Entry(game_frame))],
+        6: [("Enter '1' for Column 1, '2' for Column 2, or '3' for Column 3:", ttk.Entry(game_frame))],
+        7: [("Enter '1' for high or '2' for low:", ttk.Entry(game_frame))],
     }
 
     for label, entry in entry_widgets[bet_type]:
         tk.Label(game_frame, text=label).pack(pady=10)
         entry.pack(pady=10)
 
-    tk.Button(game_frame, text="Place Bet", command=place_bet).pack(pady=10)
+    tk.Button(game_frame, text="Place Bet", command=lambda: place_bet(entry_widgets[bet_type])).pack(pady=10)
     tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
     game_frame.pack(padx=20, pady=20)
 
 # Function to place the bet and calculate the result
-def place_bet():
+def place_bet(entry_widgets):
     global total_money
     total_money -= 10  # Cost per round
     bet_type = bet_type_var.get()
 
     try:
-        bet_details = get_bet_details(bet_type)
+        bet_details = get_bet_details(bet_type, entry_widgets)
     except ValueError:
         messagebox.showerror("Invalid Input", "Please enter valid bet details.")
         return
@@ -200,7 +202,7 @@ def place_bet():
         messagebox.showinfo("Sorry", "You lose.")
 
     update_money_label()
-    record_game_result(result, color, outcome, amount)
+    record_game_result(outcome, amount)
     update_games_table(outcome)
 
     if total_money <= 0:
@@ -211,35 +213,37 @@ def place_bet():
         ask_bet_amount()
 
 # Function to get bet details based on bet type
-def get_bet_details(bet_type):
-    bet_details = {'amount': int(bet_amount_entry.get())}
+def get_bet_details(bet_type, entry_widgets):
+    bet_details = {'amount': bet_amount}
+    entries = [entry.get() for label, entry in entry_widgets]
+
     if bet_type == 1:
-        bet_details['number'] = int(entry_bet_number.get())
+        bet_details['number'] = int(entries[0])
         if not (0 <= bet_details['number'] <= 36):
             throw_value_error()
     elif bet_type == 2:
-        bet_details['number1'] = int(entry_bet_number1.get())
-        bet_details['number2'] = int(entry_bet_number2.get())
+        bet_details['number1'] = int(entries[0])
+        bet_details['number2'] = int(entries[1])
         if not (0 <= bet_details['number1'] <= 36) or not (0 <= bet_details['number2'] <= 36) or abs(bet_details['number1'] - bet_details['number2']) != 1:
             throw_value_error()
     elif bet_type == 3:
-        bet_details['number'] = int(entry_bet_number.get())
+        bet_details['number'] = int(entries[0])
         if not is_valid_street(bet_details['number']):
             throw_value_error()
     elif bet_type == 4:
-        bet_details['color'] = int(entry_bet_color.get())
+        bet_details['color'] = int(entries[0])
         if bet_details['color'] not in [0, 1]:
             throw_value_error()
     elif bet_type == 5:
-        bet_details['even_odd'] = int(entry_bet_even_odd.get())
+        bet_details['even_odd'] = int(entries[0])
         if bet_details['even_odd'] not in [0, 1]:
             throw_value_error()
     elif bet_type == 6:
-        bet_details['column'] = int(entry_bet_column.get())
+        bet_details['column'] = int(entries[0])
         if bet_details['column'] not in [1, 2, 3]:
             throw_value_error()
     elif bet_type == 7:
-        bet_details['high_low'] = int(entry_bet_high_low.get())
+        bet_details['high_low'] = int(entries[0])
         if bet_details['high_low'] not in [1, 2]:
             throw_value_error()
     return bet_details
@@ -281,7 +285,7 @@ def clear_game_frame():
             widget.pack_forget()
 
 # Function to record the game result in the database
-def record_game_result(result, color, outcome, amount):
+def record_game_result(outcome, amount):
     try:
         conn = sqlite3.connect("CasinoDB.db")
         cursor = conn.cursor()
@@ -324,9 +328,6 @@ def return_to_main_menu():
 root = tk.Tk()
 root.title("Roulette Game")
 
-total_money = 0
-bet_amount = 0
-
 # Frame for starting the game and viewing rules and bet types
 start_frame = tk.Frame(root, bg='green', padx=20, pady=20)
 start_frame.pack(padx=20, pady=20)
@@ -349,16 +350,6 @@ button_start.grid(row=4, column=0, padx=10, pady=10)
 
 # Frame for the actual game
 game_frame = tk.Frame(root, bg='darkred', padx=20, pady=20)
-
-initial_money_entry = ttk.Entry(game_frame)
-bet_amount_entry = ttk.Entry(game_frame)
-entry_bet_number = ttk.Entry(game_frame)
-entry_bet_number1 = ttk.Entry(game_frame)
-entry_bet_number2 = ttk.Entry(game_frame)
-entry_bet_color = ttk.Entry(game_frame)
-entry_bet_even_odd = ttk.Entry(game_frame)
-entry_bet_column = ttk.Entry(game_frame)
-entry_bet_high_low = ttk.Entry(game_frame)
 
 bet_type_var = tk.IntVar()
 
