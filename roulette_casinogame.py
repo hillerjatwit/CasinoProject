@@ -1,6 +1,8 @@
 import random
 import tkinter as tk
 from tkinter import messagebox, ttk
+import sqlite3
+from datetime import datetime
 
 # Function to generate a random number between 0 and 36
 def spin_wheel():
@@ -31,21 +33,80 @@ def show_bet_types():
         "Types of Bets:\n\n"
         "1. Straight up: Bet on a single number (0-36).\n"
         "2. Split: Bet on two adjacent numbers.\n"
-        "3. Street: Bet on three consecutive numbers in a row.\n"
+        "   - Examples: (1, 2), (2, 3), (4, 5), (1, 4), (2, 5), (3, 6)\n"
+        "3. Street: Bet on three consecutive numbers in a row.\n \n"
+        "   - 0: Covers numbers 0, 1, 2\n"
+        "   - 1: Covers numbers 1, 2, 3\n"
+        "   - 4: Covers numbers 4, 5, 6\n"
+        "   - 7: Covers numbers 7, 8, 9\n"
+        "   - 10: Covers numbers 10, 11, 12\n"
+        "   - 13: Covers numbers 13, 14, 15\n"
+        "   - 16: Covers numbers 16, 17, 18\n"
+        "   - 19: Covers numbers 19, 20, 21\n"
+        "   - 22: Covers numbers 22, 23, 24\n"
+        "   - 25: Covers numbers 25, 26, 27\n"
+        "   - 28: Covers numbers 28, 29, 30\n"
+        "   - 31: Covers numbers 31, 32, 33\n"
+        "   - 34: Covers numbers 34, 35, 36\n \n"
         "4. Red/Black: Bet on the color of the number.\n"
         "5. Even/Odd: Bet on whether the number is even or odd.\n"
-        "6. Column: Bet on one of the three columns.\n"
+        "6. Column: Bet on one of the three columns.\n\n"
+        "   - Column 1: 1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34\n"
+        "   - Column 2: 2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35\n"
+        "   - Column 3: 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36\n\n"
         "7. High/Low: Bet on whether the number is high (19-36) or low (1-18).\n"
     )
     messagebox.showinfo("Types of Bets", bet_types)
 
+# Function to show the roulette board
+def show_roulette_board():
+    clear_game_frame()
+    numbers = [
+        [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
+        [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
+        [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34]
+    ]
+
+    colors = {
+        0: "green", 1: "red", 2: "black", 3: "red", 4: "black", 5: "red", 6: "black", 7: "red", 8: "black", 9: "red",
+        10: "black", 11: "black", 12: "red", 13: "black", 14: "red", 15: "black", 16: "red", 17: "black", 18: "red",
+        19: "red", 20: "black", 21: "red", 22: "black", 23: "red", 24: "black", 25: "red", 26: "black", 27: "red",
+        28: "black", 29: "black", 30: "red", 31: "black", 32: "red", 33: "black", 34: "red", 35: "black", 36: "red"
+    }
+
+    for row in numbers:
+        frame = tk.Frame(game_frame)
+        frame.pack()
+        for num in row:
+            label = tk.Label(frame, text=num, borderwidth=2, relief="solid", width=5, height=2, bg=colors[num], fg="white")
+            label.pack(side="left")
+
+    zero_label = tk.Label(game_frame, text="0", borderwidth=2, relief="solid", width=5, height=2, bg=colors[0], fg="white")
+    zero_label.pack(pady=10)
+    
+    tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
+    game_frame.pack(padx=20, pady=20)
+
 # Function to start the game
 def start_game():
-    global total_money
-    total_money = 150
-    update_money_label()
-    start_frame.pack_forget()
+    clear_game_frame()
+    tk.Label(game_frame, text="Enter your starting amount of money:").pack(pady=10)
+    initial_money_entry.pack(pady=10)
+    tk.Button(game_frame, text="Submit", command=set_initial_money).pack(pady=10)
+    tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
     game_frame.pack(padx=20, pady=20)
+
+# Function to set the initial amount of money
+def set_initial_money():
+    global total_money
+    try:
+        total_money = int(initial_money_entry.get())
+        if total_money <= 0:
+            raise ValueError
+    except ValueError:
+        messagebox.showerror("Invalid Input", "Please enter a valid amount of money.")
+        return
+    update_money_label()
     ask_bet_amount()
 
 # Function to ask for bet amount
@@ -54,6 +115,8 @@ def ask_bet_amount():
     tk.Label(game_frame, text="Place your bet amount ($10 per round):").pack(pady=10)
     bet_amount_entry.pack(pady=10)
     tk.Button(game_frame, text="Next", command=ask_bet_type).pack(pady=10)
+    tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
+    game_frame.pack(padx=20, pady=20)
 
 # Function to ask for bet type
 def ask_bet_type():
@@ -70,6 +133,8 @@ def ask_bet_type():
         tk.Radiobutton(game_frame, text=text, variable=bet_type_var, value=value).pack()
 
     tk.Button(game_frame, text="Next", command=ask_bet_details).pack(pady=10)
+    tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
+    game_frame.pack(padx=20, pady=20)
 
 # Function to validate bet amount input
 def validate_bet_amount():
@@ -102,6 +167,8 @@ def ask_bet_details():
         entry.pack(pady=10)
 
     tk.Button(game_frame, text="Place Bet", command=place_bet).pack(pady=10)
+    tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
+    game_frame.pack(padx=20, pady=20)
 
 # Function to place the bet and calculate the result
 def place_bet():
@@ -120,15 +187,21 @@ def place_bet():
 
     messagebox.showinfo("Result", f"The wheel spins... It lands on {result} ({color})!")
 
+    outcome = "Loss"
+    amount = -bet_details['amount']
     if bet_wins(bet_type, bet_details, result, color):
         winnings = calculate_winnings(bet_type, bet_details['amount'])
         total_money += winnings
+        outcome = "Win"
+        amount = winnings
         messagebox.showinfo("Congratulations", f"You win ${winnings}!")
     else:
         total_money -= bet_details['amount']
         messagebox.showinfo("Sorry", "You lose.")
 
     update_money_label()
+    record_game_result(result, color, outcome, amount)
+    update_games_table(outcome)
 
     if total_money <= 0:
         messagebox.showinfo("Game Over", "You have no more money. Game over!")
@@ -207,6 +280,46 @@ def clear_game_frame():
         if widget != label_total_money:
             widget.pack_forget()
 
+# Function to record the game result in the database
+def record_game_result(result, color, outcome, amount):
+    try:
+        conn = sqlite3.connect("CasinoDB.db")
+        cursor = conn.cursor()
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        user_id = 'user1'  # Example user ID, should be dynamic
+        game_id = 'Roulette'
+        sql_command = """INSERT INTO HISTORY (TIMESTAMP, GAMEID, USERID, RESULT, AMOUNT)
+                         VALUES (?, ?, ?, ?, ?)"""
+        cursor.execute(sql_command, (timestamp, game_id, user_id, outcome, amount))
+        conn.commit()
+        print("Database updated successfully")
+    except Exception as e:
+        print(f"Error updating database: {e}")
+    finally:
+        conn.close()
+
+# Function to update the Roulette row in the GAMES table
+def update_games_table(outcome):
+    try:
+        conn = sqlite3.connect("CasinoDB.db")
+        cursor = conn.cursor()
+        if outcome == "Win":
+            sql_command = "UPDATE GAMES SET WINS = WINS + 1 WHERE GAMEID = 'Roulette'"
+        else:
+            sql_command = "UPDATE GAMES SET LOSSES = LOSSES + 1 WHERE GAMEID = 'Roulette'"
+        cursor.execute(sql_command)
+        conn.commit()
+        print("GAMES table updated successfully")
+    except Exception as e:
+        print(f"Error updating GAMES table: {e}")
+    finally:
+        conn.close()
+
+# Function to return to the main menu
+def return_to_main_menu():
+    game_frame.pack_forget()
+    start_frame.pack(padx=20, pady=20)
+
 # Initialize the main window
 root = tk.Tk()
 root.title("Roulette Game")
@@ -218,18 +331,26 @@ bet_amount = 0
 start_frame = tk.Frame(root, bg='green', padx=20, pady=20)
 start_frame.pack(padx=20, pady=20)
 
+# Add a big title for the game
+title_label = tk.Label(start_frame, text="Roulette", font=("Helvetica", 24), bg='green')
+title_label.grid(row=0, column=0, padx=10, pady=10)
+
 button_rules = ttk.Button(start_frame, text="View Rules", command=show_rules)
-button_rules.grid(row=0, column=0, padx=10, pady=10)
+button_rules.grid(row=1, column=0, padx=10, pady=10)
 
 button_bet_types = ttk.Button(start_frame, text="View Types of Bets", command=show_bet_types)
-button_bet_types.grid(row=1, column=0, padx=10, pady=10)
+button_bet_types.grid(row=2, column=0, padx=10, pady=10)
+
+button_roulette_board = ttk.Button(start_frame, text="Roulette Board", command=show_roulette_board)
+button_roulette_board.grid(row=3, column=0, padx=10, pady=10)
 
 button_start = ttk.Button(start_frame, text="Start Game", command=start_game)
-button_start.grid(row=2, column=0, padx=10, pady=10)
+button_start.grid(row=4, column=0, padx=10, pady=10)
 
 # Frame for the actual game
 game_frame = tk.Frame(root, bg='darkred', padx=20, pady=20)
 
+initial_money_entry = ttk.Entry(game_frame)
 bet_amount_entry = ttk.Entry(game_frame)
 entry_bet_number = ttk.Entry(game_frame)
 entry_bet_number1 = ttk.Entry(game_frame)
@@ -241,7 +362,7 @@ entry_bet_high_low = ttk.Entry(game_frame)
 
 bet_type_var = tk.IntVar()
 
-label_total_money = ttk.Label(game_frame, text="Your total money: $150", background='darkred', foreground='white')
+label_total_money = ttk.Label(game_frame, text="Your total money: $0", background='darkred', foreground='white')
 label_total_money.pack(pady=10)
 
 root.mainloop()
