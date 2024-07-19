@@ -1,19 +1,61 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
+import sqlite3
+import numpy as np
+import matplotlib.pyplot as plt
+import numpy as np 
+
 
 # Initialize the user database (in a real application, use a secure database)
 user_db = {}
 
+class dbConnection: #FOR EASE OF USE
+
+    DatabaseURI="CasinoDB.db"
+    cur=None
+    db=None
+    
+    def __init__(self):     
+        self.db = sqlite3.connect(self.DatabaseURI)
+        self.cur = self.db.cursor()
+        
+    def query(self, query):     #IF YOU WANT TO RUN A QUERY
+        self.cur.execute(query)
+        return self.cur.fetchone()
+
+    def queryall(self, query):     #IF YOU WANT TO RUN A QUERY
+        self.cur.execute(query)
+        return self.cur.fetchall()    
+
+    def queryExecute(self, query):      #IF YOU WANT TO RUN AN EXCECUTABLE
+        self.cur.execute(query)
+        self.db.commit()
+
 # Function to handle user login
 def login():
+    db = sqlite3.connect("CasinoDB.db") 
+    cursor = db.cursor()
+    conn = dbConnection()
+
+
     username = login_username_entry.get()
     password = login_password_entry.get()
-    
-    if username in user_db and user_db[username]['password'] == password:
-        messagebox.showinfo("Login Success", f"Welcome, {user_db[username]['name']}!")
-        show_main_page()
+    user_db =conn.queryall("SELECT * FROM ADMIN")
+    for user in user_db:
+        if user[0]==username:
+            if user[1]==password:
+                messagebox.showinfo("Login Success", f"Welcome, {user[0]}!")
+                show_main_page()
+                break
     else:
         messagebox.showerror("Login Failed", "Invalid username or password")
+
+
+    # if username in user_db and user_db[0] == password:
+    #     messagebox.showinfo("Login Success", f"Welcome, {user_db[1]}!")
+    #     show_main_page()
+    # else:
+        # messagebox.showerror("Login Failed", "Invalid username or password")
 
 # Function to handle user signup
 def signup():
@@ -68,16 +110,43 @@ def show_signup_page():
 def play_blackjack():
     messagebox.showinfo("Blackjack", "Starting Blackjack game...")
 
-def play_slots():
-    messagebox.showinfo("Slots", "Starting Slots game...")
-
 def play_roulette():
     messagebox.showinfo("Roulette", "Starting Roulette game...")
+
+def play_slots():
+    #not working atm
+   # exec(open('SlotsMachineGame.py').read())
+    messagebox.showinfo("Play Slots", "Starting other casino games...")
+
 
 def play_other_games():
     messagebox.showinfo("Other Games", "Starting other casino games...")
 
+def check_stats():
+    db = sqlite3.connect("CasinoDB.db") 
+    cursor = db.cursor()
+    conn = dbConnection()
+
+    main_frame.pack_forget()
+    cs = tk.Frame(root, padx=20, pady=20)
+    cs.pack(fill="both", expand=True)
+
+    data=conn.queryall("select RESULT FROM HISTORY") 
+    x = [] 
+    add= 0
+    y = [] 
+    for i in data: 
+        x.append(add)	#x column contain data(1,2,3,4,5) 
+        y.append(i[0])	#y column contain data(1,2,3,4,5) 
+        add=add+1
+    plt.plot(x,y) 
+    plt.show() 
+            
+
+
+
 # Create the main application window
+
 root = tk.Tk()
 root.title("User Authentication System")
 root.geometry("400x450")
@@ -141,14 +210,17 @@ welcome_label.pack(pady=20)
 blackjack_button = ttk.Button(main_frame, text="Play Blackjack", command=play_blackjack)
 blackjack_button.pack(pady=10)
 
-slots_button = ttk.Button(main_frame, text="Play Slots", command=play_slots)
+slots_button = ttk.Button(main_frame, text="Play Slots", command=lambda:[play_slots()])
 slots_button.pack(pady=10)
+
+other_games_button = ttk.Button(main_frame, text="Play Other Games", command=play_other_games)
+other_games_button.pack(pady=10)
 
 roulette_button = ttk.Button(main_frame, text="Play Roulette", command=play_roulette)
 roulette_button.pack(pady=10)
 
-other_games_button = ttk.Button(main_frame, text="Play Other Games", command=play_other_games)
-other_games_button.pack(pady=10)
+statistics_button = ttk.Button(main_frame, text="Check Stats", command=check_stats)
+statistics_button.pack(pady=10)
 
 logout_button = ttk.Button(main_frame, text="Logout", command=show_login_page)
 logout_button.pack(pady=10)
