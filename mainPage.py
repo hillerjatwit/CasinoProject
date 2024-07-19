@@ -4,7 +4,20 @@ import sqlite3
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np 
-
+import random
+import time
+import os
+import tkinter
+import tkinter as tk
+from tkinter.ttk import *
+import tkinter as tk
+from tkinter import *
+from tkinter import ttk
+import sqlite3
+from datetime import datetime
+from PIL import ImageTk, Image  
+def spinning():
+    pass
 
 # Initialize the user database (in a real application, use a secure database)
 user_db = {}
@@ -113,11 +126,411 @@ def play_blackjack():
 def play_roulette():
     messagebox.showinfo("Roulette", "Starting Roulette game...")
 
-def play_slots():
-    #not working atm
-   # exec(open('SlotsMachineGame.py').read())
-    messagebox.showinfo("Play Slots", "Starting other casino games...")
+def play_roulette():
+    messagebox.showinfo("Roulette", "Starting Roulette game...")
 
+def play_slots():
+
+  #CONNECTING TO DATABASE
+    db = sqlite3.connect("CasinoDB.db") 
+    cursor = db.cursor()
+    conn = dbConnection()
+    global bank
+    global result
+    global cont
+    global oldestbank
+
+    # Function to get the bank balance
+    def get_bank():
+        cursor.execute("SELECT BALANCE FROM USER WHERE USERID = 'user1'")
+        bank = cursor.fetchone()[0]
+        return int(bank)
+
+    bank = get_bank()
+    oldestbank = bank
+    cont = 1
+    result = "win"
+    multiplier = 1  #STORING BANK VALUE IN VARIABLE
+
+    random.seed(time.time())    #GETTING RANDOM SEED FOR THE SPINS
+   
+   
+    while cont == 1 and bank > 0:           #WHILE THE USER HAS MORE THEN 0 DOLLARS AND THEY WANT TO CONTINUE
+      
+        #CREATE A TKINTER OBJECT AND SET SOME BASIC PROPERTIES
+        r = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
+        root.minsize(700, 300)
+        r.pack(fill="both", expand=True)
+        Apple1 = Image.open((os.getcwd())+f"/Apple.png").resize((25,25))
+        Cherry1 = Image.open((os.getcwd())+f"/Cherry.png").resize((25,25))
+        Grape1 = Image.open((os.getcwd())+f"/Grape.png").resize((25,25))
+        Orange1= Image.open((os.getcwd())+f"/Orange.png").resize((25,25))
+        HorseShoe1 = Image.open((os.getcwd())+f"/HorseShoe.png").resize((25,25))
+        Bar1 = Image.open((os.getcwd())+f"/Bar.png").resize((25,25))
+
+        Apple = ImageTk.PhotoImage(Apple1)
+        Cherry = ImageTk.PhotoImage(Cherry1)
+        Grape = ImageTk.PhotoImage(Grape1)
+        Orange = ImageTk.PhotoImage(Orange1)
+        HorseShoe = ImageTk.PhotoImage(HorseShoe1)
+        Bar = ImageTk.PhotoImage(Bar1)
+        #LABELS DISPLAYING INFORMATION 
+        Lab1 =Label(r, text=f"You currently have: ${bank}").grid(row=0,column = 2)
+        Lab2=Label(r,text ="1) $10 spins, jackpot: $4000" ).grid(row=1,column=2)
+        Lab3=Label(r,text="2) $50 spins, jackpot: $20000").grid(row=2,column=2)
+        Lab4 = Label(r, text="3) $100 spins, jackpot: $40000").grid(row=3,column=2)
+       
+        Lab51=Label(r,text="               : 0").grid(row=4, column =1)
+        Lab5=Label(r,image=Apple).grid(row=4, column =1)
+       
+        Lab61=Label(r,text="               : 1").grid(row=4, column =3)
+        Lab6=Label(r,image = Cherry).grid(row=4, column = 3)
+        
+        Lab71=Label(r,text="               : 2").grid(row=5, column =1)
+        Lab7=Label(r,image=Grape).grid(row=5,column=1)
+        
+        Lab81=Label(r,text="               : 3").grid(row=5, column =3)
+        Lab8=Label(r, image = Orange).grid(row=5, column=3)
+        
+        Lab91=Label(r,text="               : 4").grid(row=6, column =1)
+        Lab9=Label(r,image = HorseShoe).grid(row=6, column =1)
+        
+        Lab101=Label(r,text="                      : WILD").grid(row=6, column =3)
+        Lab10=Label(r,image = Bar).grid(row = 6, column =3)
+
+        
+        #SETTING SOME METHODS FOR LATER USE WHICH WILL BE WHICH AMOUNT THE USER WANTS TO BET 
+        def slotChoiceis1():
+            global slotChoice
+            slotChoice=1
+        def slotChoiceis2():
+            global slotChoice
+            slotChoice=2
+        def slotChoiceis3():
+            global slotChoice
+            slotChoice=3
+        def openmanual():
+            v = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
+            v.pack(fill="both", expand=True)     # THE SIZE OF THE WINDOW IS SET ALONG WITH ITS LOCATION 
+
+            Apple1 = Image.open((os.getcwd())+f"/Apple.png").resize((25,25))
+            Cherry1 = Image.open((os.getcwd())+f"/Cherry.png").resize((25,25))
+            Grape1 = Image.open((os.getcwd())+f"/Grape.png").resize((25,25))
+            Orange1= Image.open((os.getcwd())+f"/Orange.png").resize((25,25))
+            HorseShoe1 = Image.open((os.getcwd())+f"/HorseShoe.png").resize((25,25))
+            Bar1 = Image.open((os.getcwd())+f"/Bar.png").resize((25,25))
+
+            Apple = ImageTk.PhotoImage(Apple1)
+            Cherry = ImageTk.PhotoImage(Cherry1)
+            Grape = ImageTk.PhotoImage(Grape1)
+            Orange = ImageTk.PhotoImage(Orange1)
+            HorseShoe = ImageTk.PhotoImage(HorseShoe1)
+            Bar = ImageTk.PhotoImage(Bar1)
+
+            invis1=Label(v,text="",width=20).grid(row=0,column=0)
+            invis2=Label(v,text="",width=20).grid(row=0,column=1)
+            invis3=Label(v,text="",width=20).grid(row=0,column=2)
+           # invis4=Label(v,text="",width=25).grid(row=0,column=3)
+
+            
+            Title=Label(v,text="Welcome to the slots manual",justify="center").grid(row=0,column = 1,columnspan=1)   
+            Title2=Label(v,text="The rules are as follows",justify="center").grid(row=1,column = 1,columnspan=1)     
+
+            Rule1=Label(v,text="\t\t          : Has a value of 1").grid(row=2, column =0)
+            Rule1Image=Label(v,image=Apple,justify = "left").grid(row=2, column =0)   
+            
+            Rule2=Label(v,text="\t\t          : Has a value of 2").grid(row=2, column =2)
+            Rule2Image=Label(v,image=Cherry).grid(row=2, column =2)   
+            
+            Rule3=Label(v,text="\t\t          : Has a value of 3").grid(row=3, column =0)
+            Rule3Image=Label(v,image=Grape).grid(row=3, column =0)   
+            
+            Rule4=Label(v,text="\t\t          : Has a value of 4").grid(row=3, column =2)
+            Rule4Image=Label(v,image=Orange).grid(row=3, column =2) 
+
+            Rule5=Label(v,text="\t\t          : Has a value of 5").grid(row=4, column =0)
+            Rule5Image=Label(v,image=HorseShoe).grid(row=4, column =0)   
+            
+            Rule6=Label(v,text="\t\t    : Is a wildcard").grid(row=4, column =2)
+            Rule6Image=Label(v,image=Bar).grid(row=4, column =2)   
+            
+            Rule7=Label(v,text="If you get 3 Apples -> the Jackpot is 25* your initial bet ").grid(row=5,columnspan=3)
+            Rule8=Label(v,text="If you get 3 Cherries -> the Jackpot is 50* your initial bet ").grid(row=6,columnspan=3)
+            Rule9=Label(v,text="If you get 3 Grapes -> the Jackpot is 80* your initial bet ").grid(row=7,columnspan=3)
+            Rule10=Label(v,text="If you get 3 Oranges -> the Jackpot is 100* your initial bet ").grid(row=8,columnspan=3)
+            Rule11=Label(v,text="If you get 3 HorseShoes -> the Jackpot is 160* your initial bet ").grid(row=9,columnspan=3)
+            Rule12=Label(v,text="If you get 3 Bars -> the Jackpot is 400* your initial bet ").grid(row=10,columnspan=3)
+            Rule12=Label(v,text="If you get 2 of the same and 1 Bar you get a mini jackpot\n that is worth 1/4 the corrosponding jacpot").grid(row=10,columnspan=3)
+            close =Button(v, text='Exit', width=25,command=lambda:[v.pack_forget(),play_slots()]).grid(row=11,column =1)
+
+
+
+            v.mainloop()  
+
+        def playgame():
+                f = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
+                root.minsize(700, 300)
+                f.pack(fill="both", expand=True)
+
+                Apple1 = Image.open((os.getcwd())+f"/Apple.png").resize((85,85))
+                Cherry1 = Image.open((os.getcwd())+f"/Cherry.png").resize((85,85))
+                Grape1 = Image.open((os.getcwd())+f"/Grape.png").resize((85,85))
+                Orange1= Image.open((os.getcwd())+f"/Orange.png").resize((85,85))
+                HorseShoe1 = Image.open((os.getcwd())+f"/HorseShoe.png").resize((85,85))
+                Bar1 = Image.open((os.getcwd())+f"/Bar.png").resize((85,85))
+
+                Apple = ImageTk.PhotoImage(Apple1)
+                Cherry = ImageTk.PhotoImage(Cherry1)
+                Grape = ImageTk.PhotoImage(Grape1)
+                Orange = ImageTk.PhotoImage(Orange1)
+                HorseShoe = ImageTk.PhotoImage(HorseShoe1)
+                Bar = ImageTk.PhotoImage(Bar1)
+
+                #RANDOM VALUE FOR WHAT SYMBOL THEY GET 
+                slot1 = random.randint(0, 5)
+                slotRes1 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot1]
+            
+                slot2 = random.randint(0, 5)
+                slotRes2 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot2]
+
+                slot3 = random.randint(0, 5)
+                slotRes3 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot3]
+            
+                #UPDATES THE VALUES INSIDE THE WINDOW
+                # def updateFirstSpin():
+                #     spin1.set(slotRes1)
+                # def updateSecondSpin():
+                #     spin2.set(slotRes2)
+                # def updateThirdSpin():
+                #     spin3.set(slotRes3)
+
+
+                
+                f.update_idletasks()        #ALLOWS FOR THE STRINGVAR'S TO BE UPDATED LIVE
+
+                #HIDDEN LABELS FOR SPACING
+                hidden3=Label(f,text="",width=5).grid(row=0,column=1)
+                hidden4=Label(f,text="",width=5).grid(row=1,column=5)
+                hidden5=Label(f,text="",width=5).grid(row=2,column=0)
+                hidden6=Label(f,text="",width=5).grid(row=3,column=0)
+                hidden7=Label(f,text="",width=5).grid(row=4,column=0)
+                hidden8=Label(f,text="",width=5).grid(row=5,column=0)
+
+                #SETS THE INITAL TEXT TO BE SPINNING... AS A VARIABLE STRING
+                # spin1 = StringVar()
+                # spin1.set("Spinning...")
+                spinning1 = Label(f, text="Spinning",width=25).grid(row=4,column=1)       #THE FIRST SLOT
+                # spin2 = StringVar()
+                # spin2.set("Spinning...")
+                spinning2 = Label(f, text="Spinning",width = 25).grid(row=4,column=2)        #THE SECOND SLOT
+                spin3= StringVar()
+                spin3.set("Spinning...")
+                spinning3 = Label(f, textvariable=spin3, width = 25).grid(row=4,column=3)           #THE THIRD SLOT
+                #UPDATES EACH SLOTS VALUE 1 AT A TIME WITH 1 SECOND DELAYS
+
+                f.update_idletasks()
+                time.sleep(1)
+                spinning1=Label(f,image=slotRes1).grid(row=4,column=1)
+
+                f.update_idletasks()
+                #updateFirstSpin()
+               # f.update_idletasks()
+                time.sleep(1)
+                spinning2=Label(f,image=slotRes2).grid(row=4,column=2)
+
+                f.update_idletasks()
+                #updateSecondSpin()
+               # f.update_idletasks()
+                time.sleep(1)
+                spinning2=Label(f,image=slotRes3).grid(row=4,column=3)
+
+                f.update_idletasks()
+                #updateThirdSpin()
+               # f.update_idletasks()
+                time.sleep(1)  
+                
+                
+                def checkwin(multiplier, slot1, slot2, slot3): #USED TO CHECK IF THE USER HAS WON ANY WACH WITH A SPECIFIC CASE 
+                    winnings = 0
+                    if slot1 == slot2 == slot3 == 0:                        #USER GETS 3 SPADES
+                        win.set(f"Tiny Jackpot $:{multiplier*250}")
+                        print("You Hit The Tiny Jackpot!!!")
+                        winnings = multiplier * 250 
+                    elif slot1 == slot2 == slot3 == 1:                      #USER GETS 3 DIAMONDS
+                        win.set(f"Small Jackpot $:{multiplier*500}")
+                        print("You Hit The Small Jackpot!!!")
+                        winnings = multiplier * 500
+                    elif slot1 == slot2 == slot3 == 2:                      #USER GETS 3 CLUBS
+                        win.set(f"Medium Jackpot $:{multiplier*800}")
+                        print("You Hit The Medium Jackpot!!!")
+                        winnings = multiplier * 800
+                    elif slot1 == slot2 == slot3 == 3:                      #USER GETS 3 HEARTS
+                        win.set(f"Big Jackpot $:{multiplier*1000}")
+                        print("You Hit The Big Jackpot!!!")
+                        winnings = multiplier * 1000
+                    elif slot1 == slot2 == slot3 == 4:                      #USER GETS 3 CIRCLES
+                        win.set(f"Large Jackpot $:{multiplier*1600}")                
+                        print("You Hit The Large Jackpot!!!")
+                        winnings = multiplier * 1600
+                    elif slot1 == slot2 == slot3 == 5:                      #USER GETS 3 STARS  
+                        win.set(f"MEGA Jackpot $:{multiplier*4000}")
+                        print("You Hit The MEGA Jackpot!!!")
+                        winnings = multiplier * 4000
+                    elif (slot1 == slot2 == 0 and slot3 == 5) or (slot1 == slot3 == 0 and slot2 == 5) or (slot2 == slot3 == 0 and slot1 == 5):      #USER GETS 2 SPADES AND 1 STAR
+                        win.set(f"Tiny Wild Jackpot $:{multiplier*250/4}")
+                        print("You Hit The Tiny Wild Jackpot!!!")
+                        winnings = multiplier * 250 / 4
+                    elif (slot1 == slot2 == 1 and slot3 == 5) or (slot1 == slot3 == 1 and slot2 == 5) or (slot2 == slot3 == 1 and slot1 == 5):      #USER GET 2 DIAMONDS AND 1 STAR
+                        win.set(f"Small Wild Jackpot $:{multiplier*500/4}")
+                        print("You Hit The Small Wild Jackpot!!!")
+                        winnings = multiplier * 500 / 4
+                    elif (slot1 == slot2 == 2 and slot3 == 5) or (slot1 == slot3 == 2 and slot2 == 5) or (slot2 == slot3 == 2 and slot1 == 5):      #USER GETS 2 CLUBS AND 1 STAR
+                        win.set(f"Medium Wild Jackpot $:{multiplier*800/4}")
+                        print("You Hit The Medium Wild Jackpot!!!")
+                        winnings = multiplier * 800 / 4
+                    elif (slot1 == slot2 == 3 and slot3 == 5) or (slot1 == slot3 == 3 and slot2 == 5) or (slot2 == slot3 == 3 and slot1 == 5):      #USER GETS 2 HEARTS AND 1 STAR 
+                        win.set(f"Big Wild Jackpot $:{multiplier*1000/4}")
+                        print("You Hit The Big Wild Jackpot!!!")
+                        winnings = multiplier * 1000 / 4
+                    elif (slot1 == slot2 == 4 and slot3 == 5) or (slot1 == slot3 == 4 and slot2 == 5) or (slot2 == slot3 == 4 and slot1 == 5):      #USER GETS 2 CIRCLES AND 1 STAR
+                        win.set(f"Large Wild Jackpot $:{multiplier*1600/4}")
+                        print("You Hit The Large Wild Jackpot!!!")
+                        winnings = multiplier * 1600 / 4
+                    else:                                 #USER GETS NO WIN
+                        win.set("No Win")
+                        winnings = 0
+                    print(f"You Win ${winnings}")
+                    return winnings
+                    
+                bank=get_bank()
+                if (slotChoice == 1):
+                    multiplier = 1
+                elif (slotChoice == 2):
+                    multiplier = 5
+                elif (slotChoice == 3):
+                    multiplier = 10
+                bank = bank- multiplier * 10
+                #CREATING A VARIABLE STRING FOR CHECKIGN A WIN
+                win=StringVar()
+                win.set("Checking Win...")
+                winCheck=Label(f,textvariable=win,width=25,justify='center').grid(row=2 ,column = 2)
+                time.sleep(1)
+                
+                bank += checkwin(multiplier, slot1, slot2, slot3)   #BANK GETS UPDATED TO 
+
+                if (bank>oldestbank): #USER WIN     BANK LOSS
+                    losses =conn.query(f"SELECT LOSSES FROM GAMES WHERE GAMEID = 'Slots' ")
+                    losses=int(losses[0])+1
+                    result = "Loss"
+                    conn.queryExecute(f"UPDATE GAMES SET LOSSES = {losses} WHERE GAMEID = 'Slots'")
+                elif(bank<=oldestbank): #USER LOSS BANK WIN
+                    wins =conn.query("SELECT WINS FROM GAMES WHERE GAMEID = 'Slots' ")
+                    wins = int(wins[0])+1
+                    result = "Win"
+                    conn.queryExecute(f"UPDATE GAMES SET WINS = {wins} WHERE GAMEID = 'Slots'")
+        
+                #UPDATES THE AMOUNT OF TIMES THE GAME HAS BEEN PLAYED 
+                timeplayed =conn.query("SELECT TIMESPLAYED FROM GAMES WHERE GAMEID = 'Slots' ")
+                timeplayed=int(timeplayed[0])+1
+                conn.queryExecute(f"UPDATE GAMES SET TIMESPLAYED = {timeplayed} WHERE GAMEID = 'Slots'")
+        
+                #THE USER SLEEPS -> UPDATES THE TEXT -> SLEEPS
+                time.sleep(1)
+                f.update_idletasks()
+                time.sleep(1)
+
+
+                conn.queryExecute(f"UPDATE USER SET BALANCE = {bank} WHERE USERID = 'user1'")
+         
+                #UPDATE GAMES NET GAIN
+                CasinoNet =conn.query(f"SELECT NETGAIN FROM GAMES WHERE GAMEID = 'Slots' ")
+                CasinoNet=int(CasinoNet[0])-bank+oldestbank
+                conn.queryExecute(f"UPDATE GAMES SET NETGAIN = {CasinoNet} WHERE GAMEID = 'Slots'")
+
+                #GET THE DATE
+                now = datetime.now()
+
+                dt_string = now.strftime(f"%Y-%m-%d-%H:%M:%S")
+                #STORE THE DATA FROM THE MOST RECENT WIN AND PUT IT IN THE DATABASE 
+                conn.queryExecute(f"INSERT INTO HISTORY VALUES ('{dt_string}', 'Slots', 'user1', '{result}', {abs(bank-oldestbank)} )")
+                netgain=conn.query("SELECT NETGAIN FROM USER WHERE USERID = 'user1'")
+                netgain = int(netgain[0]) +bank-oldestbank
+                conn.queryExecute(f"UPDATE USER SET NETGAIN = {netgain} WHERE USERID = 'user1'")
+                f.mainloop
+                  #CREATING A NEW TKINTER OBJECT FOR THE SPINNING OF THE SLOTS
+       
+                #IF THE USER WANTS TO CONTINUE CONT = 1
+                def contu():
+                    global cont
+                    cont = 1
+                def endu():
+                    global cont
+                    cont = 0
+                
+                k = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
+                k.pack(fill="both", expand=True)
+                #UPDATE USER BALANCE
+                
+
+                #ASK USER IF THEY WANT TO CONTINUE
+                L1 = Label(k,text = "Would You Like to Continue?",width = 25).grid(row=3, column =2)
+                hidden9 = Label(k, text='', width=5).grid(row=1, column=0)
+                hidden10 = Label(k, text='', width=5).grid(row=2, column=4)
+                hidden11 = Label(k, text='', width=5).grid(row=3, column=4)
+                hidden12 = Label(k, text='', width=5).grid(row=4, column=4)
+                hidden13 = Label(k, text='', width=5).grid(row=5, column=4)
+                
+                conti = ttk.Button(k, text='Continue', width=25,command=lambda:[contu(),k.pack_forget(),f.pack_forget(),play_slots()] ).grid(row=6, column=1)
+                end = ttk.Button(k, text='End', width=25,command=lambda:[endu(),k.pack_forget(),f.pack_forget(),show_main_page()] ).grid(row= 6, column= 3)
+
+
+                k.mainloop()
+                # cont = int(input("Would you like to continue (1 - Yes) (2 - No): "))
+                #IF USER RUNS OUT OF MONEY
+                if bank < 1:
+                    b = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
+                    b.pack(fill="both", expand=True)
+                    label = Label(b, text='You ran out of money, haha', width=25).grid(row=3, column=2)
+                    hidden14 = Label(b, text='', width=5).grid(row=1, column=0)
+                    hidden15 = Label(b, text='', width=5).grid(row=2, column=4)
+                    hidden16 = Label(b, text='', width=5).grid(row=3, column=4)
+                    hidden17 = Label(b, text='', width=5).grid(row=4, column=4)
+                    hidden18 = Label(b, text='', width=5).grid(row=5, column=4)
+                    b.mainloop()
+                #USER IS DONE PLAYING
+                else:
+                    # v=tk.Tk()  
+                    # v.geometry('{}x{}+{}+{}'.format(640, 300, 475, 200))
+                    # label = Label(v,text='Thank you for playing', width=25).grid(row=2, column=1)
+                    # hidden19 = Label(v, text='', width=30).grid(row=1, column=0)
+                    # hidden20 = Label(v, text='', width=30).grid(row=2, column=0)
+                    # hidden21 = Label(v, text='', width=30).grid(row=3, column=0)
+                    # hidden22 = Label(v, text='', width=25).grid(row=4, column=0)
+                    # hidden23 = Label(v, text='', width=25).grid(row=5, column=4)
+                    # v.mainloop()
+                    quit
+        
+
+
+        #CREATING BUTTONS FOR THE USER TO INTERACT WITH ALONG WITH COMMANDS AND ATTRIBUTES
+        button = ttk.Button(r, text='10$ Spins ',width=25,command=lambda:[r.pack_forget(),slotChoiceis1(),playgame()] ).grid(row=9,column = 1)
+        button2 = ttk.Button(r, text='50$ Spins', width=25,command=lambda:[r.pack_forget(),slotChoiceis2(),playgame()] ).grid(row=9, column =2)
+        button3 = ttk.Button(r, text='100$ Spins', width=25,command=lambda:[r.pack_forget(),slotChoiceis3(),playgame()] ).grid(row=9,column =3)
+        manual = ttk.Button(r, text='Game Manual', width=25,command=lambda:[r.pack_forget(),openmanual()] ).grid(row=10,column =2)
+        
+
+        #SOME HIDDEN LABELS USED FOR CREATING SPACING
+        hidden =Label(r, text = "", width = 5).grid(row=9, column = 4)
+        hidden2 =Label(r, text = "", width = 5).grid(row=9, column = 0)
+        
+        #THE MAIN LOOP FOR THE TKINTER WINDOW
+        r.mainloop()
+        #r.pack_forget()
+        #THE AMOUNT OF MONEY DEDUCTED FROM THE USERS BANK
+        
+    
+      
+    
 
 def play_other_games():
     messagebox.showinfo("Other Games", "Starting other casino games...")
@@ -127,7 +540,7 @@ def check_stats():
     cursor = db.cursor()
     conn = dbConnection()
 
-    main_frame.pack_forget()
+   # main_frame.pack_forget()
     cs = tk.Frame(root, padx=20, pady=20)
     cs.pack(fill="both", expand=True)
 
@@ -210,11 +623,8 @@ welcome_label.pack(pady=20)
 blackjack_button = ttk.Button(main_frame, text="Play Blackjack", command=play_blackjack)
 blackjack_button.pack(pady=10)
 
-slots_button = ttk.Button(main_frame, text="Play Slots", command=lambda:[play_slots()])
+slots_button = ttk.Button(main_frame, text="Play Slots", command=lambda:[main_frame.pack_forget(),login_frame.pack_forget(), signup_frame.pack_forget(),play_slots()])
 slots_button.pack(pady=10)
-
-other_games_button = ttk.Button(main_frame, text="Play Other Games", command=play_other_games)
-other_games_button.pack(pady=10)
 
 roulette_button = ttk.Button(main_frame, text="Play Roulette", command=play_roulette)
 roulette_button.pack(pady=10)
