@@ -8,16 +8,12 @@ import random
 import time
 import os
 import tkinter
-import tkinter as tk
 from tkinter.ttk import *
 import tkinter as tk
 from tkinter import *
 from tkinter import ttk
-import sqlite3
 from datetime import datetime
-from PIL import ImageTk, Image  
-def spinning():
-    pass
+from PIL import ImageTk, Image 
 
 # Initialize the user database (in a real application, use a secure database)
 user_db = {}
@@ -154,7 +150,6 @@ def play_slots():
 
     random.seed(time.time())    #GETTING RANDOM SEED FOR THE SPINS
    
-   
     while cont == 1 and bank > 0:           #WHILE THE USER HAS MORE THEN 0 DOLLARS AND THEY WANT TO CONTINUE
       
         #CREATE A TKINTER OBJECT AND SET SOME BASIC PROPERTIES
@@ -232,7 +227,6 @@ def play_slots():
             invis3=Label(v,text="",width=20).grid(row=0,column=2)
            # invis4=Label(v,text="",width=25).grid(row=0,column=3)
 
-            
             Title=Label(v,text="Welcome to the slots manual",justify="center").grid(row=0,column = 1,columnspan=1)   
             Title2=Label(v,text="The rules are as follows",justify="center").grid(row=1,column = 1,columnspan=1)     
 
@@ -260,10 +254,8 @@ def play_slots():
             Rule10=Label(v,text="If you get 3 Oranges -> the Jackpot is 100* your initial bet ").grid(row=8,columnspan=3)
             Rule11=Label(v,text="If you get 3 HorseShoes -> the Jackpot is 160* your initial bet ").grid(row=9,columnspan=3)
             Rule12=Label(v,text="If you get 3 Bars -> the Jackpot is 400* your initial bet ").grid(row=10,columnspan=3)
-            Rule12=Label(v,text="If you get 2 of the same and 1 Bar you get a mini jackpot\n that is worth 1/4 the corrosponding jacpot").grid(row=10,columnspan=3)
-            close =Button(v, text='Exit', width=25,command=lambda:[v.pack_forget(),play_slots()]).grid(row=11,column =1)
-
-
+            Rule12=Label(v,text="If you get 2 of the same and 1 Bar you get a mini jackpot\n that is worth 1/4 the corrosponding jacpot").grid(row=11,columnspan=3)
+            close =Button(v, text='Exit', width=25,command=lambda:[v.pack_forget(),play_slots()]).grid(row=12,column =1)
 
             v.mainloop()  
 
@@ -296,16 +288,6 @@ def play_slots():
                 slot3 = random.randint(0, 5)
                 slotRes3 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot3]
             
-                #UPDATES THE VALUES INSIDE THE WINDOW
-                # def updateFirstSpin():
-                #     spin1.set(slotRes1)
-                # def updateSecondSpin():
-                #     spin2.set(slotRes2)
-                # def updateThirdSpin():
-                #     spin3.set(slotRes3)
-
-
-                
                 f.update_idletasks()        #ALLOWS FOR THE STRINGVAR'S TO BE UPDATED LIVE
 
                 #HIDDEN LABELS FOR SPACING
@@ -315,17 +297,18 @@ def play_slots():
                 hidden6=Label(f,text="",width=5).grid(row=3,column=0)
                 hidden7=Label(f,text="",width=5).grid(row=4,column=0)
                 hidden8=Label(f,text="",width=5).grid(row=5,column=0)
+                f.update_idletasks()
 
                 #SETS THE INITAL TEXT TO BE SPINNING... AS A VARIABLE STRING
-                # spin1 = StringVar()
-                # spin1.set("Spinning...")
+                spin1 = StringVar()
+                spin1.set("Spinning...")
                 spinning1 = Label(f, text="Spinning",width=25).grid(row=4,column=1)       #THE FIRST SLOT
-                # spin2 = StringVar()
-                # spin2.set("Spinning...")
+                spin2 = StringVar()
+                spin2.set("Spinning...")
                 spinning2 = Label(f, text="Spinning",width = 25).grid(row=4,column=2)        #THE SECOND SLOT
                 spin3= StringVar()
                 spin3.set("Spinning...")
-                spinning3 = Label(f, textvariable=spin3, width = 25).grid(row=4,column=3)           #THE THIRD SLOT
+                spinning3 = Label(f,  text="Spinning", width = 25).grid(row=4,column=3)           #THE THIRD SLOT
                 #UPDATES EACH SLOTS VALUE 1 AT A TIME WITH 1 SECOND DELAYS
 
                 f.update_idletasks()
@@ -333,22 +316,16 @@ def play_slots():
                 spinning1=Label(f,image=slotRes1).grid(row=4,column=1)
 
                 f.update_idletasks()
-                #updateFirstSpin()
-               # f.update_idletasks()
+        
                 time.sleep(1)
                 spinning2=Label(f,image=slotRes2).grid(row=4,column=2)
 
                 f.update_idletasks()
-                #updateSecondSpin()
-               # f.update_idletasks()
                 time.sleep(1)
                 spinning2=Label(f,image=slotRes3).grid(row=4,column=3)
-
+              
                 f.update_idletasks()
-                #updateThirdSpin()
-               # f.update_idletasks()
                 time.sleep(1)  
-                
                 
                 def checkwin(multiplier, slot1, slot2, slot3): #USED TO CHECK IF THE USER HAS WON ANY WACH WITH A SPECIFIC CASE 
                     winnings = 0
@@ -439,7 +416,6 @@ def play_slots():
                 f.update_idletasks()
                 time.sleep(1)
 
-
                 conn.queryExecute(f"UPDATE USER SET BALANCE = {bank} WHERE USERID = 'user1'")
          
                 #UPDATE GAMES NET GAIN
@@ -485,7 +461,6 @@ def play_slots():
 
 
                 k.mainloop()
-                # cont = int(input("Would you like to continue (1 - Yes) (2 - No): "))
                 #IF USER RUNS OUT OF MONEY
                 if bank < 1:
                     b = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
@@ -497,17 +472,8 @@ def play_slots():
                     hidden17 = Label(b, text='', width=5).grid(row=4, column=4)
                     hidden18 = Label(b, text='', width=5).grid(row=5, column=4)
                     b.mainloop()
-                #USER IS DONE PLAYING
                 else:
-                    # v=tk.Tk()  
-                    # v.geometry('{}x{}+{}+{}'.format(640, 300, 475, 200))
-                    # label = Label(v,text='Thank you for playing', width=25).grid(row=2, column=1)
-                    # hidden19 = Label(v, text='', width=30).grid(row=1, column=0)
-                    # hidden20 = Label(v, text='', width=30).grid(row=2, column=0)
-                    # hidden21 = Label(v, text='', width=30).grid(row=3, column=0)
-                    # hidden22 = Label(v, text='', width=25).grid(row=4, column=0)
-                    # hidden23 = Label(v, text='', width=25).grid(row=5, column=4)
-                    # v.mainloop()
+            
                     quit
         
 
@@ -553,6 +519,7 @@ def check_stats():
         y.append(i[0])	#y column contain data(1,2,3,4,5) 
         add=add+1
     plt.plot(x,y) 
+    plt.title("HOUSE WINS/LOSSES")
     plt.show() 
             
 
