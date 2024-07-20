@@ -130,7 +130,7 @@ def show_main_page():
         main_frame.forget()
         cheaterpage=tk.Frame(root, padx=20, pady=20)
         cheaterpage = tk.Frame(root, padx=20, pady=20)
-        messagebox.showinfo("CHEAT", "CHEATER DETECTED!! LOGG   ING OUT!")
+        messagebox.showinfo("CHEAT", "CHEATER DETECTED!! LOGGING OUT!")
         main_frame.pack_forget()
         signup_frame.pack_forget()
         show_login_page()
