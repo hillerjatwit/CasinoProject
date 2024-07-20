@@ -115,6 +115,7 @@ def show_signup_page():
     main_frame.pack_forget()
     signup_frame.pack(fill="both", expand=True)
 
+
 # Placeholder functions for games
 def play_blackjack():
     messagebox.showinfo("Blackjack", "Starting Blackjack game...")
@@ -124,6 +125,210 @@ def play_roulette():
 
 def play_roulette():
     messagebox.showinfo("Roulette", "Starting Roulette game...")
+
+def play_craps():
+    db = sqlite3.connect("CasinoDB.db") 
+    cursor = db.cursor()
+    conn = dbConnection()
+    global bank
+    global result
+    global cont
+    global oldestbank
+    user = 'user1'
+
+    def get_bank():
+       cursor.execute(f"SELECT BALANCE FROM USER WHERE USERID = '{user}'")
+       bank = cursor.fetchone()[0]
+       return int(bank)
+    def get_time():
+        now = datetime.now()
+        timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
+        return timestamp
+    bank = get_bank()
+    oldestbank = bank
+    cont = 1
+    result = "win"
+
+    random.seed(time.time())    #GETTING RANDOM SEED FOR THE SPINS
+
+    while cont == 1 and bank > 0: 
+
+
+        r = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
+        root.minsize(700, 300)
+        r.pack(fill="both", expand=True)    
+        #LABELS DISPLAYING INFORMATION 
+        Lab1 =Label(r, text=f"You currently have: ${bank}").grid(row=0,column = 2)
+            
+        maxbet = str((conn.query("SELECT MAXBET FROM GAMES WHERE GAMEID = 'Craps'"))[0])
+        #print(maxbet)
+        betenter = ttk.Label(r, text = f'Enter the amount of money to bet, max bet allowed is {maxbet}').grid(row = 2, column = 2)
+
+        user_entry = tk.Entry(r)#gets the user specified bet amount
+        user_entry.grid(row = 3, column = 2, pady = 10)
+        #user_entry.insert(0, 100)
+        bettype = ttk.Label(r, text = f'Please select the kind of bet you would like to perform')    
+        passbutton = ttk.Button(r, text = 'Pass Line Bet', width = 25, command = lambda:[play_game(1)]).grid(row = 5, column = 2)
+        datetimepassbutton = ttk.Button(r, text = """Don't Pass Line Bet""", width = 25, command = lambda:[play_game(0)]).grid(row = 6, column = 2)
+
+
+        dpassbutton = ttk.Button()
+
+        def play_game(type):
+
+            def dice_animation(dice, pos):
+                if (dice == 1):
+                    dice = '⚀'
+                if (dice == 2):
+                    dice = '⚁'
+                if (dice == 3):
+                    dice = '⚂'
+                if (dice == 4):
+                    dice = '⚃'
+                if (dice == 5):
+                    dice = '⚄'
+                if (dice == 6):
+                    dice = '⚅'
+                dice1 = Label(f, text = dice, font = ('Arial',100), width = 4).grid(row = 4, column = pos)
+                f.update_idletasks()    
+
+            bank = get_bank()
+            if (type == 1): #determines the win and loss conditions when the user selected pass line or don't pass line bet
+                wincon = {7, 11}
+                losecon = {2, 3, 12}
+            else:
+                wincon = {2, 3}
+                losecon = {7, 11}                
+
+            f = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
+            root.minsize(700, 300)
+            f.pack(fill= "both", expand = True)
+
+            userbet = int(user_entry.get())
+            if (((userbet % 1) == 0) and (userbet <= int(maxbet)) and (userbet > 0)):
+                r.pack_forget()
+
+                def roll_dice():
+                    for x in range(12):
+                        time.sleep(.1)
+                        roll1 = random.randint(1, 6)
+                        roll2 = random.randint(1, 6)
+                        
+                        dice_animation(roll1, 1)
+                        dice_animation(roll2, 2)
+                    rolltotal = roll1 + roll2
+                    return rolltotal        
+
+                roll = roll_dice()
+                rolltotal = 0
+                print(roll)
+                timestamp = get_time()
+                if roll in (wincon):
+                    win = Label(f, text = f'You Won ${userbet}!').grid(row = 6, column = 1)
+                    bank += userbet
+                elif roll in (losecon):
+                    lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 6, column = 1)
+                    bank -= userbet
+                else:
+                    while rolltotal not in (roll, 7):
+                        time.sleep(1)
+                        rroll = Label(f, text = f'Rerolling for {roll}...').grid(row = 6, column = 1)
+                        f.update_idletasks
+                        rolltotal = roll_dice()
+                        print(f"({rolltotal})")
+                    if rolltotal != 7:
+                        win = Label(f, text = f'You Won ${userbet}!').grid(row = 7, column = 1)
+                        bank += userbet
+                    else:
+                        lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 7, column = 1)
+                        bank -= userbet
+                    f.update_idletasks()
+
+                if (bank>oldestbank): #USER WIN     BANK LOSS
+                    losses =conn.query(f"SELECT LOSSES FROM GAMES WHERE GAMEID = 'Craps' ")
+                    losses=int(losses[0])+1
+                    result = "Loss"
+                    conn.queryExecute(f"UPDATE GAMES SET LOSSES = {losses} WHERE GAMEID = 'Craps'")
+                elif(bank<=oldestbank): #USER LOSS BANK WIN
+                    wins =conn.query("SELECT WINS FROM GAMES WHERE GAMEID = 'Craps' ")
+                    wins = int(wins[0])+1
+                    result = "Win"
+                    conn.queryExecute(f"UPDATE GAMES SET WINS = {wins} WHERE GAMEID = 'Craps'")
+        
+                #UPDATES THE AMOUNT OF TIMES THE GAME HAS BEEN PLAYED 
+                timeplayed =conn.query("SELECT TIMESPLAYED FROM GAMES WHERE GAMEID = 'Craps' ")
+                timeplayed=int(timeplayed[0])+1
+                conn.queryExecute(f"UPDATE GAMES SET TIMESPLAYED = {timeplayed} WHERE GAMEID = 'Craps'")
+        
+                #THE USER SLEEPS -> UPDATES THE TEXT -> SLEEPS
+                time.sleep(1)
+                f.update_idletasks()
+                time.sleep(1)
+
+                conn.queryExecute(f"UPDATE USER SET BALANCE = {bank} WHERE USERID = '{user}'")
+         
+                #UPDATE GAMES NET GAIN
+                CasinoNet =conn.query(f"SELECT NETGAIN FROM GAMES WHERE GAMEID = 'Craps' ")
+                CasinoNet=int(CasinoNet[0])-bank+oldestbank
+                conn.queryExecute(f"UPDATE GAMES SET NETGAIN = {CasinoNet} WHERE GAMEID = 'Craps'")
+
+                #GET THE DATE
+                now = datetime.now()
+
+                dt_string = now.strftime(f"%Y-%m-%d-%H:%M:%S")
+                #STORE THE DATA FROM THE MOST RECENT WIN AND PUT IT IN THE DATABASE 
+                conn.queryExecute(f"INSERT INTO HISTORY VALUES ('{dt_string}', 'Craps', '{user}', '{result}', {abs(bank-oldestbank)} )")
+                netgain=conn.query(f"SELECT NETGAIN FROM USER WHERE USERID = '{user}'")
+                netgain = int(netgain[0]) +bank-oldestbank
+                conn.queryExecute(f"UPDATE USER SET NETGAIN = {netgain} WHERE USERID = '{user}'")
+                        
+                f.mainloop
+                #IF THE USER WANTS TO CONTINUE CONT = 1
+                def contu():
+                    global cont
+                    cont = 1
+                def endu():
+                    global cont
+                    cont = 0
+
+                time.sleep(3)#shows the results to the user for a time
+                f.pack_forget
+                k = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
+                k.pack(fill="both", expand=True)
+                #UPDATE USER BALANCE
+                
+
+                #ASK USER IF THEY WANT TO CONTINUE
+                L1 = Label(k,text = "Would You Like to Continue?",width = 25).grid(row=3, column =2)
+                hidden9 = Label(k, text='', width=5).grid(row=1, column=0)
+                hidden10 = Label(k, text='', width=5).grid(row=2, column=4)
+                hidden11 = Label(k, text='', width=5).grid(row=3, column=4)
+                hidden12 = Label(k, text='', width=5).grid(row=4, column=4)
+                hidden13 = Label(k, text='', width=5).grid(row=5, column=4)
+                
+                conti = ttk.Button(k, text='Continue', width=25,command=lambda:[contu(),k.pack_forget(),f.pack_forget(),play_craps()] ).grid(row=6, column=1)
+                end = ttk.Button(k, text='End', width=25,command=lambda:[endu(),k.pack_forget(),f.pack_forget(),show_main_page()] ).grid(row= 6, column= 3)
+
+                k.mainloop()
+                
+                #SOME HIDDEN LABELS USED FOR CREATING SPACING
+                hidden =Label(r, text = "", width = 5).grid(row=9, column = 4)
+                hidden2 =Label(r, text = "", width = 5).grid(row=9, column = 0)
+            else:
+                messagebox.showerror("Bet cancelled", "Please enter a valid bet amount")
+                f.destroy()
+
+            
+            
+        #THE MAIN LOOP FOR THE TKINTER WINDOW
+        r.mainloop()
+        #r.pack_forget()
+        #THE AMOUNT OF MONEY DEDUCTED FROM THE USERS BANK
+
+
+
+    else: #returns to main page
+        show_main_page()
 
 def play_slots():
 
@@ -136,11 +341,12 @@ def play_slots():
     global cont
     global oldestbank
 
+    user = 'user1'
     # Function to get the bank balance
     def get_bank():
-        cursor.execute("SELECT BALANCE FROM USER WHERE USERID = 'user1'")
-        bank = cursor.fetchone()[0]
-        return int(bank)
+       cursor.execute(f"SELECT BALANCE FROM USER WHERE USERID = '{user}'")
+       bank = cursor.fetchone()[0]
+       return int(bank)
 
     bank = get_bank()
     oldestbank = bank
@@ -416,7 +622,7 @@ def play_slots():
                 f.update_idletasks()
                 time.sleep(1)
 
-                conn.queryExecute(f"UPDATE USER SET BALANCE = {bank} WHERE USERID = 'user1'")
+                conn.queryExecute(f"UPDATE USER SET BALANCE = {bank} WHERE USERID = '{user}'")
          
                 #UPDATE GAMES NET GAIN
                 CasinoNet =conn.query(f"SELECT NETGAIN FROM GAMES WHERE GAMEID = 'Slots' ")
@@ -428,10 +634,10 @@ def play_slots():
 
                 dt_string = now.strftime(f"%Y-%m-%d-%H:%M:%S")
                 #STORE THE DATA FROM THE MOST RECENT WIN AND PUT IT IN THE DATABASE 
-                conn.queryExecute(f"INSERT INTO HISTORY VALUES ('{dt_string}', 'Slots', 'user1', '{result}', {abs(bank-oldestbank)} )")
-                netgain=conn.query("SELECT NETGAIN FROM USER WHERE USERID = 'user1'")
+                conn.queryExecute(f"INSERT INTO HISTORY VALUES ('{dt_string}', 'Slots', '{user}', '{result}', {abs(bank-oldestbank)} )")
+                netgain=conn.query(f"SELECT NETGAIN FROM USER WHERE USERID = '{user}'")
                 netgain = int(netgain[0]) +bank-oldestbank
-                conn.queryExecute(f"UPDATE USER SET NETGAIN = {netgain} WHERE USERID = 'user1'")
+                conn.queryExecute(f"UPDATE USER SET NETGAIN = {netgain} WHERE USERID = '{user}'")
                 f.mainloop
                   #CREATING A NEW TKINTER OBJECT FOR THE SPINNING OF THE SLOTS
        
@@ -461,23 +667,7 @@ def play_slots():
 
 
                 k.mainloop()
-                #IF USER RUNS OUT OF MONEY
-                if bank < 1:
-                    b = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
-                    b.pack(fill="both", expand=True)
-                    label = Label(b, text='You ran out of money, haha', width=25).grid(row=3, column=2)
-                    hidden14 = Label(b, text='', width=5).grid(row=1, column=0)
-                    hidden15 = Label(b, text='', width=5).grid(row=2, column=4)
-                    hidden16 = Label(b, text='', width=5).grid(row=3, column=4)
-                    hidden17 = Label(b, text='', width=5).grid(row=4, column=4)
-                    hidden18 = Label(b, text='', width=5).grid(row=5, column=4)
-                    b.mainloop()
-                else:
-            
-                    quit
-        
-
-
+                    
         #CREATING BUTTONS FOR THE USER TO INTERACT WITH ALONG WITH COMMANDS AND ATTRIBUTES
         button = ttk.Button(r, text='10$ Spins ',width=25,command=lambda:[r.pack_forget(),slotChoiceis1(),playgame()] ).grid(row=9,column = 1)
         button2 = ttk.Button(r, text='50$ Spins', width=25,command=lambda:[r.pack_forget(),slotChoiceis2(),playgame()] ).grid(row=9, column =2)
@@ -493,7 +683,8 @@ def play_slots():
         r.mainloop()
         #r.pack_forget()
         #THE AMOUNT OF MONEY DEDUCTED FROM THE USERS BANK
-        
+    else: #returns to main page
+        show_main_page()
     
       
     
@@ -591,6 +782,9 @@ blackjack_button = ttk.Button(main_frame, text="Play Blackjack", command=play_bl
 blackjack_button.pack(pady=10)
 
 slots_button = ttk.Button(main_frame, text="Play Slots", command=lambda:[main_frame.pack_forget(),login_frame.pack_forget(), signup_frame.pack_forget(),play_slots()])
+slots_button.pack(pady=10)
+
+slots_button = ttk.Button(main_frame, text="Play Craps", command=lambda:[main_frame.pack_forget(),login_frame.pack_forget(), signup_frame.pack_forget(),play_craps()])
 slots_button.pack(pady=10)
 
 roulette_button = ttk.Button(main_frame, text="Play Roulette", command=play_roulette)
