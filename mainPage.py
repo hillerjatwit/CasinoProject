@@ -623,14 +623,14 @@ def play_slots():
                 Bar = ImageTk.PhotoImage(Bar1)
 
                 #RANDOM VALUE FOR WHAT SYMBOL THEY GET 
-                slot1 = random.randint(0, 10)
-                slotRes1 = [Apple, Apple, Cherry, Cherry, Grape, Grape, Orange, Orange, HorseShoe, HorseShoe, Bar][slot1]
+                slot1 = random.randint(0, 5)
+                slotRes1 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot1]
             
-                slot2 = random.randint(0, 10)
-                slotRes2 = [Apple, Apple, Cherry, Cherry, Grape, Grape, Orange, Orange, HorseShoe, HorseShoe, Bar][slot2]
+                slot2 = random.randint(0, 5)
+                slotRes2 = [Apple, Cherry, Grape,  Orange,  HorseShoe, Bar][slot2]
 
-                slot3 = random.randint(0, 10)
-                slotRes3 = [Apple, Apple, Cherry, Cherry, Grape, Grape, Orange, Orange, HorseShoe, HorseShoe, Bar][slot3]
+                slot3 = random.randint(0, 5)
+                slotRes3 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot3]
             
                 f.update_idletasks()        #ALLOWS FOR THE STRINGVAR'S TO BE UPDATED LIVE
 
