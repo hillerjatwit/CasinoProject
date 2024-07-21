@@ -3,14 +3,71 @@ import random
 from PIL import Image, ImageTk
 import lib
 from tkinter import messagebox
+import sqlite3
+import time
+import tkinter as tk
 
 
 root = Tk()
-root.title('Codemy.com - Card Deck')
-#root.iconbitmap('c:/gui/codemy.ico')
+root.title('Blackjack')
 root.geometry("1200x800")
 root.configure(background="green")
 
+class dbConnection: #FOR EASE OF USE
+
+    DatabaseURI="CasinoDB.db"
+    cur=None
+    db=None
+    
+    def __init__(self):     
+        self.db = sqlite3.connect(self.DatabaseURI)
+        self.cur = self.db.cursor()
+        
+    def query(self, query):     #IF YOU WANT TO RUN A QUERY
+        self.cur.execute(query)
+        return self.cur.fetchone()
+
+    def queryall(self, query):     #IF YOU WANT TO RUN A QUERY
+        self.cur.execute(query)
+        return self.cur.fetchall()    
+
+    def queryExecute(self, query):      #IF YOU WANT TO RUN AN EXCECUTABLE
+        self.cur.execute(query)
+        self.db.commit()
+
+def getUserInfo() -> int:
+    global userMoney, username, netGain
+    
+    username = "user3"
+    conn = dbConnection()
+    return conn.queryall(
+        f"SELECT BALANCE FROM USER WHERE USERID = '{username}'"
+    )
+    
+    
+def place_bet():
+    global userMoney, Bet, Betplaced, username
+    try:
+        bet_amount = int(bet_entry.get())
+        userMoney = int(userMoney)
+        if int(bet_amount) > userMoney:
+            messagebox.showwarning("Insufficient Funds", "You do not have enough money to place this bet.")
+        else:
+            Bet = bet_amount
+            newBalance = userMoney - bet_amount
+            conn = dbConnection()
+            conn.queryExecute(
+                f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+            )
+            userMoney = newBalance
+            updateLabels()
+    except ValueError:
+        messagebox.showwarning("Invalid Bet", "Please enter a valid number for the bet amount.")
+        
+def updateLabels():
+    money_label.config(text=f"Money: ${userMoney}")
+    bet_label.config(text=f"Current Bet: ${Bet}")
+    
 def stand():
     global isShowing, dealer_image1
     
@@ -33,15 +90,24 @@ def stand():
     
     card_button.config(state="disabled")
     stand_button.config(state="disabled")
-    split_button.config(state="disabled")
     
     if status["player"] != "bust":
         if status["dealer"] == "stand":
             if dealer_total > player_total:
                 messagebox.showinfo("Dealer Wins", f"Player: {player_total}  Dealer: {dealer_total}")
             elif dealer_total < player_total:
+                newBalance = userMoney + (1.5 * Bet)
+                conn = dbConnection()
+                conn.queryExecute(
+                f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                )
                 messagebox.showinfo("Player Wins", f"Player: {player_total}  Dealer: {dealer_total}")
             else:
+                newBalance = userMoney + Bet
+                conn = dbConnection()
+                conn.queryExecute(
+                f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                )
                 messagebox.showinfo("Push", f"Player: {player_total}  Dealer: {dealer_total}")
         elif status["dealer"] == "hit":
             dealer_hit()
@@ -49,10 +115,18 @@ def stand():
         elif status["dealer"] == "win":
             messagebox.showinfo("Dealer Wins", f"Player: {player_total}  Dealer: 21")
         elif status["dealer"] == "bust":
+            newBalance = userMoney + (1.5 * Bet)
+            conn = dbConnection()
+            conn.queryExecute(
+            f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+            )
             messagebox.showinfo("Player Wins", f"Player: {player_total}  Dealer: {dealer_total}")
     else:
+        status["dealer"] = "win"
         messagebox.showinfo("Dealer Wins", f"Player: {player_total}  Dealer: {dealer_total}")
-                        
+        
+    updateLabels()
+          
 def resize_cards(card):
 	# Open the image
 	our_card_img = Image.open(card)
@@ -72,18 +146,13 @@ def generate_deck():
      return D.cards
     
 def shuffle():
-    global status, player_wins, dealer_wins, isShowing
+    global status, player_wins, dealer_wins, isShowing, Bet, Betplaced, count
     player_wins = 0
     dealer_wins = 0
     isShowing = False
+    Betplaced = tk.IntVar()
     
-    status = {"dealer":"no", "player":"no"}
-    
-    card_button.config(state="normal")
-    stand_button.config(state="normal")
-    split_button.config(state="disabled")
-    
-    #reset images
+        #reset images
     dealer_label_1.config(image='')
     dealer_label_2.config(image='')
     dealer_label_3.config(image='')
@@ -94,6 +163,17 @@ def shuffle():
     player_label_3.config(image='')
     player_label_4.config(image='')
     player_label_5.config(image='')
+    
+    status = {"dealer":"no", "player":"no"}
+    
+    card_button.config(state="disabled")
+    stand_button.config(state="disabled")
+    bet_button.config(state="normal")
+    
+    bet_button.wait_variable(Betplaced)
+    
+    card_button.config(state="normal")
+    stand_button.config(state="normal")
     
     global Deck
     Deck = generate_deck()
@@ -226,9 +306,6 @@ def player_hit():
             
         validateGame("player")
         
-def split():
-    return 1
-
 def validateGame(player):
     
     global dealer_total, player_total, dealer_score, player_score, aceChanged
@@ -297,6 +374,8 @@ def validateGame(player):
         
         for score in player_score:
             player_total += score
+        for score in dealer_score:
+            dealer_total += score
             
         if player_total > 21:
             for i in range(0, len(player_score), 1):
@@ -328,7 +407,7 @@ def validateGame(player):
                 elif player_total == 21:
                     status[player] = "win"
                 else:
-                    status[player] = "no"  
+                    status[player] = "bust"  
             else:
                 status[player] = "bust"          
         
@@ -349,15 +428,19 @@ def blackjack():
             if status["dealer"] == "win" and status["player"] == "win":
                 card_button.conifg(state="disabled")
                 stand_button.config(state="disabled")
-                split_button.config(state="disabled")
                 dealer_image1 = resize_cards(f'images/cards/{dealer[0]._get_name()}.png')
                 dealer_label_1.config(image=dealer_image1)
+                
+                newBalance = userMoney + Bet
+                conn = dbConnection()
+                conn.queryExecute(
+                f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                )
                 
                 messagebox.showinfo("Push", "Tie")
             elif status["dealer"] == "win":
                 card_button.config(state="disabled")
                 stand_button.config(state="disabled")
-                split_button.config(state="disabled")
                 dealer_image1 = resize_cards(f'images/cards/{dealer[0]._get_name()}.png')
                 dealer_label_1.config(image=dealer_image1)
                 
@@ -365,39 +448,28 @@ def blackjack():
             elif status["player"] == "win":
                 card_button.config(state="disabled")
                 stand_button.config(state="disabled")
-                split_button.config(state="disabled")
                 dealer_image1 = resize_cards(f'images/cards/{dealer[0]._get_name()}.png')
                 dealer_label_1.config(image=dealer_image1)
                 
-                messagebox.showinfo("Player Wins", "Blackjack, Player Wins")
+                newBalance = userMoney + (1.5 * Bet)
+                conn = dbConnection()
+                conn.queryExecute(
+                f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                )
                 
-    elif len(dealer_score) < 2 or len(player_score) < 2:
-        i = 0
-    else:   
-            if status["dealer"] == "yes" and status["player"] == "yes":
-                messagebox.showinfo("Push", "Tie")
-                card_button.conifg(state="disabled")
-                stand_button.config(state="disabled")
-                split_button.config(state="disabled")
-            elif status["dealer"] == "yes":
-                messagebox.showinfo("Dealer Wins", "21, Dealer Wins")
-                card_button.config(state="disbaled")
-                stand_button.config(state="disabled")
-                split_button.config(state="disabled")
+                messagebox.showinfo("Player Wins", "Blackjack, Player Wins")   
                 
-            elif status["player"] == "yes":
-                messagebox.showinfo("Playewr Wins", "21, Player Wins")
-                card_button.config(state="disbaled")
-                stand_button.config(state="disabled")
-                split_button.config(state="disabled")
-            if status["player"] == "bust":
-                messagebox.showinfo("Player Busts", f"Player Loses Player: {player_total}")
-                card_button.config(state="disbaled")
-                stand_button.config(state="disabled")
-                split_button.config(state="disabled")     
-    
-    
+    else:
+        if status["player"] == "bust":
+            messagebox.showinfo("Dealer Wins", f"Player: {player_total}  Dealer: {dealer_total}")
+            
+    updateLabels()
 
+global userMoney, username
+userMoney = str(getUserInfo())
+userMoney = ''.join(e for e in userMoney if e.isalnum())
+username = "user3"
+Bet = 0
 
 my_frame = Frame(root, bg="green")
 my_frame.pack(pady=20)
@@ -455,8 +527,17 @@ card_button.grid(row=0, column=1, padx=10)
 stand_button = Button(button_frame, text="Stand", command=stand)
 stand_button.grid(row=0, column=2, padx=10)
 
-split_button = Button(button_frame, text="Split", command=split)
-split_button.grid(row=0, column=3)
+money_label = Label(root, text=f"Money: ${userMoney}", font=("Helvetica", 18), bg="green", fg="white")
+money_label.pack(pady=20)
+
+bet_label = Label(root, text=f"Current Bet: ${Bet}", font=("Helvetica", 18), bg="green", fg="white")
+bet_label.pack(pady=20)
+
+bet_entry = Entry(root, font=("Helvetica", 18), width=10)
+bet_entry.pack(pady=20)
+
+bet_button = Button(root, text="Place Bet", font=("Helvetica", 18), command=lambda: [Betplaced.set(1), place_bet()])
+bet_button.pack(pady=20)
 
 
 shuffle()
