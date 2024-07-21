@@ -1,4 +1,4 @@
-﻿import random  # For shuffling the deck of cards
+import random  # For shuffling the deck of cards and random bets
 import os  # For handling file paths
 import sqlite3  # For database operations
 import tkinter as tk  # For creating the GUI
@@ -17,12 +17,13 @@ class PokerGame:
         self.connect_to_database()  # Connect to the database first
         self.create_tables()  # Create necessary tables if they don't exist
         self.deck = Deck()  # Create a deck of cards
-        self.players = [Player(f"Player {i+1}", 150) for i in range(3)]  # Create 3 players with initial wallet amount
+        self.players = [Player("Player 1", 150), Player("Computer 1", 150), Player("Computer 2", 150)]  # Create 1 human player and 2 computer players with initial wallet amount
         self.pot = 0  # Initialize the pot
         self.player_winnings = {}  # Dictionary to track player winnings
         self.root = tk.Tk()  # Create the main window
         self.root.title("Poker Game")  # Set the title of the main window
         self.card_images = self.load_card_images()  # Load card images
+        self.back_of_card_image = self.load_back_of_card_image()  # Load the back of card image
         self.hand_windows = []  # List to keep track of hand windows
         self.create_menu()  # Create the menu
 
@@ -92,6 +93,12 @@ class PokerGame:
                     print(f"Image not found: {path}")
         return card_images
 
+    def load_back_of_card_image(self):
+        path = r"C:\Users\penacruzn\OneDrive - Wentworth Institute of Technology\Desktop\POKER_GAME\DECK OF CARDS\Back_of_card.png"
+        image = Image.open(path)
+        image = image.resize((100, 150), Image.LANCZOS)  # Resize the image
+        return ImageTk.PhotoImage(image)
+
     def create_menu(self):
         self.root.geometry("600x400")  # Set the window size
         menu_frame = tk.Frame(self.root, bg="green")  # Create a frame for the menu
@@ -120,6 +127,15 @@ class PokerGame:
         self.root.mainloop()  # Start the Tkinter main loop
 
     def start_game(self):
+        rounds = simpledialog.askinteger("Rounds", "Enter the number of rounds to play:", minvalue=1, maxvalue=100)
+        for round_number in range(1, rounds + 1):
+            messagebox.showinfo("Round", f"Round {round_number}")
+            self.play_round()
+            if self.check_winner():
+                break
+        self.display_final_winner()
+
+    def play_round(self):
         ante = 10  # Ante amount for each player
         for player in self.players:
             player.wallet -= ante  # Deduct ante from each player's wallet
@@ -138,6 +154,10 @@ class PokerGame:
             player.hand.clear()  # Clear the player's hand before dealing new cards
         for _ in range(5):
             for player in self.players:
+                if len(self.deck.cards) == 0:
+                    messagebox.showinfo("Reshuffle", "Deck is empty. Reshuffling deck.")
+                    self.deck = Deck()
+                    self.deck.shuffle_deck()
                 card = self.deck.deal_card()  # Deal a card to the player
                 player.add_card_to_hand(card)  # Add the card to the player's hand
                 card.image = card.get_image(self.card_images)  # Assign the image to the card
@@ -156,7 +176,10 @@ class PokerGame:
 
         # Display each card in the player's hand
         for card in player.hand:
-            card_label = tk.Label(hand_frame, image=card.image, padx=10, pady=5)
+            if player.name.startswith("Player"):
+                card_label = tk.Label(hand_frame, image=card.image, padx=10, pady=5)
+            else:
+                card_label = tk.Label(hand_frame, image=self.back_of_card_image, padx=10, pady=5)
             card_label.pack(side="left")
 
     def update_hand_display(self, player, window):
@@ -164,7 +187,10 @@ class PokerGame:
             widget.destroy()
         # Display each card in the player's hand
         for card in player.hand:
-            card_label = tk.Label(window, image=card.image, padx=10, pady=5)
+            if player.name.startswith("Player"):
+                card_label = tk.Label(window, image=card.image, padx=10, pady=5)
+            else:
+                card_label = tk.Label(window, image=self.back_of_card_image, padx=10, pady=5)
             card_label.pack(side="left")
 
     def close_all_hand_windows(self):
@@ -176,7 +202,14 @@ class PokerGame:
         current_bet = 0  # Initialize the current bet
         for player in self.players:
             if player.hand:  # If the player has not folded
-                bet = simpledialog.askinteger("Betting", f"{player.name}'s turn. Current bet is {current_bet}. Your wallet: {player.wallet}\nEnter your bet (0 to fold): ")
+                if player.name.startswith("Player"):
+                    # Human player
+                    bet = simpledialog.askinteger("Betting", f"{player.name}'s turn. Current bet is {current_bet}. Your wallet: {player.wallet}\nEnter your bet (0 to fold): ")
+                else:
+                    # Computer player makes a random bet
+                    bet = random.randint(0, min(player.wallet, current_bet + 20))
+                    messagebox.showinfo("Betting", f"{player.name} bets {bet}")  # Show the computer player's bet in a message box
+
                 if bet == 0:
                     player.hand.clear()  # Clear the player's hand if they fold
                 else:
@@ -197,13 +230,22 @@ class PokerGame:
 
                 self.update_hand_display(player, hand_frame)  # Display the player's hand
 
-                # Prompt the player to choose cards to discard
-                discard_indexes = simpledialog.askstring("Discard Phase", f"{player.name}, choose the cards to discard (enter indexes separated by spaces):\n{player.display_hand()}")
-                discard_indexes = [int(x)-1 for x in discard_indexes.split() if x.isdigit()]
+                if player.name.startswith("Player"):
+                    # Human player discards
+                    discard_indexes = simpledialog.askstring("Discard Phase", f"{player.name}, choose the cards to discard (enter indexes separated by spaces):\n{player.display_hand()}")
+                    discard_indexes = [int(x)-1 for x in discard_indexes.split() if x.isdigit()]
+                else:
+                    # Computer player randomly chooses cards to discard
+                    discard_indexes = random.sample(range(5), random.randint(0, 5))
+                    messagebox.showinfo("Discarding", f"{player.name} discards {discard_indexes}")  # Show the computer player's discards in a message box
 
                 for idx in sorted(discard_indexes, reverse=True):
                     if 0 <= idx < len(player.hand):
                         player.hand.pop(idx)  # Remove the discarded card from the player's hand
+                        if len(self.deck.cards) == 0:
+                            messagebox.showinfo("Reshuffle", "Deck is empty. Reshuffling deck.")
+                            self.deck = Deck()
+                            self.deck.shuffle_deck()
                         card = self.deck.deal_card()  # Deal a new card to the player
                         card.image = card.get_image(self.card_images)  # Assign the image to the card
                         player.add_card_to_hand(card)  # Add the card to the player's hand
@@ -243,19 +285,16 @@ class PokerGame:
         winning_hand = ", ".join([f"{card.name} of {card.suit}" for card in player_cards[winner_name]])
         messagebox.showinfo("Winning Hand", f"Winning hand: {winning_hand}")
 
+        # Display the hands of the losers
+        losers_hands = []
+        for name, hand in player_cards.items():
+            if name != winner_name:
+                hand_str = ", ".join([f"{card.name} of {card.suit}" for card in hand])
+                losers_hands.append(f"{name}'s hand: {hand_str}")
+        messagebox.showinfo("Losers' Hands", "\n".join(losers_hands))
+
         # Update the player's winnings
         self.player_winnings[winner_name] = self.player_winnings.get(winner_name, 0) + self.pot
-
-        # Save game result to database
-        user_id = winner_name.split()[-1]
-        result = 'WIN'
-        amount = self.player_winnings[winner_name]
-        print("Attempting to save game result to database")
-        if hasattr(self, 'cursor'):
-            self.save_game_result(1, user_id, result, amount)
-            self.update_user_balance_and_netgain(user_id, amount, self.players[int(user_id) - 1].wallet)
-        else:
-            print("Cursor attribute is not initialized")
 
         self.pot = 0
 
@@ -264,6 +303,17 @@ class PokerGame:
         for player in self.players:
             wallets_display += f"{player.name}'s Wallet: {player.wallet + self.player_winnings.get(player.name, 0)}\n"
         messagebox.showinfo("Wallets", wallets_display)
+
+    def check_winner(self):
+        active_players = [player for player in self.players if player.wallet > 0]
+        if len(active_players) == 1:
+            messagebox.showinfo("Game Over", f"{active_players[0].name} is the last player remaining and wins the game!")
+            return True
+        return False
+
+    def display_final_winner(self):
+        winner = max(self.players, key=lambda player: player.wallet)
+        messagebox.showinfo("Game Over", f"{winner.name} has the most chips and wins the game!")
 
     def evaluate_hand(self, hand):
         # Evaluate the hand and return the hand type
@@ -365,4 +415,3 @@ class PokerGame:
 # To start the game, create an instance of PokerGame and call display_menu.
 if __name__ == "__main__":
     game = PokerGame()
-
