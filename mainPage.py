@@ -1678,10 +1678,10 @@ def play_slots():
                 slotRes1 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot1]
             
                 slot2 = random.randint(0, 5)
-                slotRes1 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot2]
+                slotRes2 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot2]
 
                 slot3 = random.randint(0, 5)
-                slotRes1 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot3]
+                slotRes3 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot3]
             
                 f.update_idletasks()        #ALLOWS FOR THE STRINGVAR'S TO BE UPDATED LIVE
 
