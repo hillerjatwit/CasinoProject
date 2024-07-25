@@ -1541,19 +1541,19 @@ def play_slots():
             Title=Label(v,text="Welcome to the slots manual",justify="center").grid(row=0,column = 1,columnspan=1)   
             Title2=Label(v,text="The rules are as follows",justify="center").grid(row=1,column = 1,columnspan=1)     
 
-            Rule1=Label(v,text="\t\t          : Has a value of 1").grid(row=2, column =0)
+            Rule1=Label(v,text="\t\t          : Has a value of 0").grid(row=2, column =0)
             Rule1Image=Label(v,image=Apple,justify = "left").grid(row=2, column =0)   
             
-            Rule2=Label(v,text="\t\t          : Has a value of 2").grid(row=2, column =2)
+            Rule2=Label(v,text="\t\t          : Has a value of 1").grid(row=2, column =2)
             Rule2Image=Label(v,image=Cherry).grid(row=2, column =2)   
             
-            Rule3=Label(v,text="\t\t          : Has a value of 3").grid(row=3, column =0)
+            Rule3=Label(v,text="\t\t          : Has a value of 2").grid(row=3, column =0)
             Rule3Image=Label(v,image=Grape).grid(row=3, column =0)   
             
-            Rule4=Label(v,text="\t\t          : Has a value of 4").grid(row=3, column =2)
+            Rule4=Label(v,text="\t\t          : Has a value of 3").grid(row=3, column =2)
             Rule4Image=Label(v,image=Orange).grid(row=3, column =2) 
 
-            Rule5=Label(v,text="\t\t          : Has a value of 5").grid(row=4, column =0)
+            Rule5=Label(v,text="\t\t          : Has a value of 4").grid(row=4, column =0)
             Rule5Image=Label(v,image=HorseShoe).grid(row=4, column =0)   
             
             Rule6=Label(v,text="\t\t    : Is a wildcard").grid(row=4, column =2)
@@ -2023,7 +2023,7 @@ class User:
                     print("Failed to record history after multiple attempts. Please try again later.")
 
     def cheat_attempt(self):
-        return random.random() < 0.5  # 50% chance of being caught
+        return random.random() < 0.5  # 50% chanApple, Cherry, Grape, Orange, HorseShoe, Barce of being caught
 
 class Casino:
     def __init__(self, name, db_path):
