@@ -13,7 +13,7 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox, simpledialog
-
+from typing import Union
 from datetime import datetime
 from PIL import Image, ImageTk
 
@@ -664,8 +664,7 @@ def show_signup_page():
 # Placeholder functions for games
 def play_blackjack():
     messagebox.showinfo("Blackjack", "Starting Blackjack game...")
-    def play_blackjack():
-    messagebox.showinfo("Blackjack", "Starting Blackjack game...")
+    
     
     root_blackjack = Tk()
     root_blackjack.title('Blackjack')
