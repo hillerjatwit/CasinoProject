@@ -663,48 +663,43 @@ def show_signup_page():
 
 # Placeholder functions for games
 def play_blackjack():
-    messagebox.showinfo("Blackjack", "Starting Blackjack game...")
-    
-    
-    root_blackjack = Tk()
-    root_blackjack.title('Blackjack')
-    root_blackjack.geometry("1200x800")
-    root_blackjack.configure(background="green")
-    
-    class Card:
-        def __init__(self, label: str, suit: str):
-            self.label = label
-            self.suit = suit
-            self.value = self._get_value()
+   messagebox.showinfo("Blackjack", "Starting Blackjack game...")
+    root.destroy()
 
+    root_bj = Tk()
+    root_bj.title('Blackjack')
+    root_bj.geometry("1200x800")
+    root_bj.configure(background="green")
 
-        def _get_value(self) -> Union[int, tuple]:
-            if self.label in ("2", "3", "4", "5", "6", "7", "8", "9", "10"):
-                return int(self.label)
-            if self.label in ("J", "Q", "K"):
-                return 10
-            if self.label == "A":
-                return 11
-            raise ValueError("Bad Label")
-        def _get_name(self):
-            return f"{self.label}_of_{self.suit}"
+    class dbConnection: #FOR EASE OF USE
+
+        DatabaseURI="CasinoDB.db"
+        cur=None
+        db=None
         
-        
-    class Deck:
-        def __init__ (self):
-            self.cards = []
-            self._build()
+        def __init__(self):     
+            self.db = sqlite3.connect(self.DatabaseURI)
+            self.cur = self.db.cursor()
             
-        def _build(self):
-            for suit in ["spades", "clubs", "diamonds", "hearts"]:
-                for v in ("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"):
-                    self.cards.append(Card(v,suit))
-        
-    def getUserInfo():
+        def query(self, query):     #IF YOU WANT TO RUN A QUERY
+            self.cur.execute(query)
+            return self.cur.fetchone()
+
+        def queryall(self, query):     #IF YOU WANT TO RUN A QUERY
+            self.cur.execute(query)
+            return self.cur.fetchall()    
+
+        def queryExecute(self, query):      #IF YOU WANT TO RUN AN EXCECUTABLE
+            self.cur.execute(query)
+            self.db.commit()
+
+    def getUserInfo() -> int:
         global userMoney, username, netGain
+        
+        username = "user3"
         conn = dbConnection()
         return conn.queryall(
-            f"SELECT BALANCE FROM USER WHERE USERID = '{user_db[0]}'"
+            f"SELECT BALANCE FROM USER WHERE USERID = '{username}'"
         )
         
     def place_bet():
@@ -719,7 +714,7 @@ def play_blackjack():
                 newBalance = userMoney - bet_amount
                 conn = dbConnection()
                 conn.queryExecute(
-                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{user_db[0]}'"
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
                 )
                 userMoney = newBalance
                 updateLabels()
@@ -761,14 +756,14 @@ def play_blackjack():
                     newBalance = userMoney + (1.5 * Bet)
                     conn = dbConnection()
                     conn.queryExecute(
-                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{user_db[0]}'"
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
                     )
                     messagebox.showinfo("Player Wins", f"Player: {player_total}  Dealer: {dealer_total}")
                 else:
                     newBalance = userMoney + Bet
                     conn = dbConnection()
                     conn.queryExecute(
-                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{user_db[0]}'"
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
                     )
                     messagebox.showinfo("Push", f"Player: {player_total}  Dealer: {dealer_total}")
             elif status["dealer"] == "hit":
@@ -780,7 +775,7 @@ def play_blackjack():
                 newBalance = userMoney + (1.5 * Bet)
                 conn = dbConnection()
                 conn.queryExecute(
-                f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{user_db[0]}'"
+                f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
                 )
                 messagebox.showinfo("Player Wins", f"Player: {player_total}  Dealer: {dealer_total}")
         else:
@@ -804,16 +799,15 @@ def play_blackjack():
         return our_card_image
 
     def generate_deck():
-        D = Deck()
+        D = lib.Deck()
         return D.cards
         
     def shuffle():
-        global status, player_wins, dealer_wins, isShowing, Bet, Betplaced
+        global status, player_wins, dealer_wins, isShowing, Bet, Betplaced, count
         player_wins = 0
         dealer_wins = 0
         isShowing = False
         Betplaced = tk.IntVar()
-
         
             #reset images
         dealer_label_1.config(image='')
@@ -838,8 +832,8 @@ def play_blackjack():
         card_button.config(state="normal")
         stand_button.config(state="normal")
         
-        global Deck1, userMoney
-        Deck1 = generate_deck()
+        global Deck
+        Deck = generate_deck()
         
         global dealer, player, dealer_spot, dealer_score, player_spot, player_score
         dealer = []
@@ -855,7 +849,7 @@ def play_blackjack():
         player_hit()
         player_hit()
         
-        root.title(f'Blackjack')
+        root_bj.title(f'Blackjack')
         
     def dealer_hit():
         global dealer_spot, dealer_total, player_total, player_score
@@ -863,8 +857,8 @@ def play_blackjack():
         if dealer_spot <= 5:
             try:
                 
-                dealer_card = random.choice(Deck1)
-                Deck1.remove(dealer_card)
+                dealer_card = random.choice(Deck)
+                Deck.remove(dealer_card)
                 dealer.append(dealer_card)
                 dealer_score.append(dealer_card._get_value())
                 
@@ -907,7 +901,7 @@ def play_blackjack():
                     dealer_spot += 1
                     
             except:
-                root.title("Exception")
+                root_bj.title("Exception")
                 
             validateGame("dealer")
             
@@ -918,7 +912,7 @@ def play_blackjack():
         global player_spot, player_total, dealer_total, player_score
         if player_spot <= 5:
             try:
-                player_card = Card
+                player_card = lib.Card
                 player_card = random.choice(Deck)
                 Deck.remove(player_card)
                 player.append(player_card)
@@ -965,7 +959,7 @@ def play_blackjack():
                 
             except:
                 #Add new deck to old deck
-                root.title("Exception")
+                root_bj.title("Exception")
                 
             validateGame("player")
             
@@ -1097,7 +1091,7 @@ def play_blackjack():
                     newBalance = userMoney + Bet
                     conn = dbConnection()
                     conn.queryExecute(
-                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{user_db[0]}'"
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
                     )
                     
                     messagebox.showinfo("Push", "Tie")
@@ -1117,7 +1111,7 @@ def play_blackjack():
                     newBalance = userMoney + (1.5 * Bet)
                     conn = dbConnection()
                     conn.queryExecute(
-                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{user_db[0]}'"
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
                     )
                     
                     messagebox.showinfo("Player Wins", "Blackjack, Player Wins")   
@@ -1129,15 +1123,18 @@ def play_blackjack():
         updateLabels()
 
     def Close():
-        root_blackjack.destroy()
-        show_main_page()
-    
-    global userMoney, Bet
+        root_bj.destroy()
+        main_frame.pack(fill="both", expand=True)
+        
+
+
+    global userMoney, username
     userMoney = str(getUserInfo())
     userMoney = ''.join(e for e in userMoney if e.isalnum())
+    username = "user3"
     Bet = 0
-    
-    my_frame = Frame(root_blackjack, bg="green")
+
+    my_frame = Frame(root_bj, bg="green")
     my_frame.pack(pady=20)
 
     # Create Frames For Cards
@@ -1180,7 +1177,7 @@ def play_blackjack():
     player_label_5.grid(row=1, column=4, pady=20, padx=20)
 
     # Create Button Frame
-    button_frame = Frame(root_blackjack, bg="green")
+    button_frame = Frame(root_bj, bg="green")
     button_frame.pack(pady=20)
 
     # Create a couple buttons
@@ -1193,24 +1190,26 @@ def play_blackjack():
     stand_button = Button(button_frame, text="Stand", command=stand)
     stand_button.grid(row=0, column=2, padx=10)
 
-    money_label = Label(root_blackjack, text=f"Money: ${userMoney}", font=("Helvetica", 18), bg="green", fg="white")
+    money_label = Label(root_bj, text=f"Money: ${userMoney}", font=("Helvetica", 18), bg="green", fg="white")
     money_label.pack(pady=20)
 
-    bet_label = Label(root_blackjack, text=f"Current Bet: ${Bet}", font=("Helvetica", 18), bg="green", fg="white")
+    bet_label = Label(root_bj, text=f"Current Bet: ${Bet}", font=("Helvetica", 18), bg="green", fg="white")
     bet_label.pack(pady=20)
 
-    bet_entry = Entry(root_blackjack, font=("Helvetica", 18), width=10)
+    bet_entry = Entry(root_bj, font=("Helvetica", 18), width=10)
     bet_entry.pack(pady=20)
 
-    bet_button = Button(root_blackjack, text="Place Bet", font=("Helvetica", 18), command=lambda: [Betplaced.set(1), place_bet()])
+    bet_button = Button(root_bj, text="Place Bet", font=("Helvetica", 18), command=lambda: [Betplaced.set(1), place_bet()])
     bet_button.pack(pady=20)
 
     close_button = Button(button_frame, text="Close", command=Close)
     close_button.grid(row=0, column=3, padx=20)
-    
+
+
     shuffle()
 
-    root_blackjack.mainloop()
+    root_bj.mainloop()
+    
     
     
 
