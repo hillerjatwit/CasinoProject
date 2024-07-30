@@ -1055,7 +1055,7 @@ def play_craps():
             f.pack(fill= "both", expand = True)
 
             userbet = int(user_entry.get())
-            if (((userbet % 1) == 0) and (userbet <= int(maxbet)) and (userbet > 0)):
+            if (((userbet % 1) == 0) and (userbet <= int(maxbet)) and (userbet > 0) and (userbet <= bank)):
                 r.pack_forget()
 
                 def roll_dice():
