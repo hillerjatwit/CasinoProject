@@ -540,18 +540,17 @@ class PokerGame:
             "10. High Card: When you haven't made any of the hands above, the highest card plays.\n"
         )
         messagebox.showinfo("Poker Hands and Rules", hands_rules)
-
+current_user = None
 # Function to handle user login
 def login():
-    db = sqlite3.connect("CasinoDB.db") 
-    cursor = db.cursor()
+    global current_user  # Declare global variable to modify it within the function
     conn = dbConnection()
 
     username = login_username_entry.get()
     password = login_password_entry.get()
     global user_db
     user_db = conn.queryall(
-        f"""SELECT USERID, PASSWORD
+        f"""SELECT USERID, PASSWORD, BALANCE
         FROM USER
         WHERE USERID = '{username}' 
         AND PASSWORD = '{password}'"""
@@ -568,14 +567,13 @@ def login():
 
     if user_db != []:
         messagebox.showinfo("Login Success", f"Welcome, {user_db[0][0]}!")
-        user_db = user_db[0]
         if isadmin == 0:
+            current_user = User(user_db[0][0], user_db[0][2], user_db[0][1])
             show_main_page()
         elif isadmin == 1:
             show_admin_main_page()
     else:
         messagebox.showerror("Login Failed", "Invalid username or password")
-
 
 
     # if username in user_db and user_db[0] == password:
@@ -624,10 +622,9 @@ def show_main_page():
     login_frame.pack_forget()
     admin_main_frame.pack_forget()
     signup_frame.pack_forget()
-    ischeat=conn.query(f"SELECT HASCHEATED FROM USER WHERE USERID = '{user_db[0]}'")
-    if ischeat[0]=='1':
+    ischeat = conn.query(f"SELECT HASCHEATED FROM USER WHERE USERID = '{user_db[0][0]}'")
+    if ischeat and ischeat[0] == '1':
         main_frame.forget()
-        cheaterpage=tk.Frame(root, padx=20, pady=20)
         cheaterpage = tk.Frame(root, padx=20, pady=20)
         messagebox.showinfo("CHEAT", "CHEATER DETECTED!! LOGGING OUT!")
         main_frame.pack_forget()
@@ -966,7 +963,6 @@ def play_roulette():
     bet_type_var = tk.IntVar()
 
     root.mainloop()
- 
 
 def play_poker():
     messagebox.showinfo("Poker", "Starting Poker game...")
@@ -1694,7 +1690,7 @@ class Baccarat:
             winnings = bet
         elif banker_score > player_score:
             result = "Banker wins!"
-            user.record_history("Baccarat", "Loss", -bet)
+            user.record_history("Baccarat", "Loss", bet)  # Use positive bet amount
             self.losses += 1
             winnings = -bet
         else:
@@ -1744,12 +1740,12 @@ class User:
         self.bankroll = bankroll
         self.password = password
         self.netgain = 0
-        self.hascheated = "NO"
+        self.hascheated = 0
 
     def play_game(self, game, casino, bet):
         choice = messagebox.askquestion("Cheating Attempt", "Do you want to cheat?")
         if choice == 'yes':
-            self.hascheated = "YES"
+            self.hascheated = 1
             casino.update_user_cheating(self.userid, self.hascheated)
 
             if self.cheat_attempt():
@@ -1769,7 +1765,7 @@ class User:
                 with casino.connection:
                     casino.connection.execute('''
                         INSERT INTO HISTORY (TIMESTAMP, GAMEID, USERID, RESULT, AMOUNT) VALUES (?, ?, ?, ?, ?)
-                    ''', (timestamp, game_id, self.userid, result, amount))
+                    ''', (timestamp, game_id, self.userid, result, abs(amount)))  # Use abs(amount)
                 break
             except sqlite3.OperationalError as e:
                 if attempt < retries - 1:
@@ -1777,6 +1773,93 @@ class User:
                     time.sleep(1)
                 else:
                     print("Failed to record history after multiple attempts. Please try again later.")
+
+    def cheat_attempt(self):
+        return random.random() < 0.5  # 50% chance of being caught
+
+class Casino:
+    def __init__(self, name, db_path):
+        self.name = name
+        self.connection = sqlite3.connect(db_path, timeout=10)
+        self.create_tables()
+
+    def create_tables(self):
+        with self.connection:
+            self.connection.execute('''
+                CREATE TABLE IF NOT EXISTS USER (
+                    USERID TEXT PRIMARY KEY NOT NULL,
+                    PASSWORD TEXT NOT NULL,
+                    NETGAIN INTEGER NOT NULL,
+                    BALANCE INTEGER NOT NULL,
+                    HASCHEATED INTEGER NOT NULL DEFAULT 0
+                )
+            ''')
+            self.connection.execute('''
+                CREATE TABLE IF NOT EXISTS GAMES (
+                    GAMEID TEXT PRIMARY KEY NOT NULL,
+                    NETGAIN INTEGER NOT NULL,
+                    GAMESALLOWED INTEGER NOT NULL,
+                    MAXBET INTEGER NOT NULL,
+                    TIMESPLAYED INTEGER NOT NULL,
+                    WINS INT NOT NULL DEFAULT 0,
+                    LOSSES INT NOT NULL DEFAULT 0
+                )
+            ''')
+            self.connection.execute('''
+                CREATE TABLE IF NOT EXISTS HISTORY (
+                    TIMESTAMP DATE NOT NULL,
+                    GAMEID TEXT NOT NULL,
+                    USERID TEXT NOT NULL,
+                    RESULT TEXT NOT NULL,
+                    AMOUNT INTEGER NOT NULL,
+                    PRIMARY KEY(TIMESTAMP)
+                )
+            ''')
+
+    def add_user(self, user):
+        retries = 3
+        for attempt in range(retries):
+            try:
+                with self.connection:
+                    self.connection.execute('''
+                        INSERT INTO USER (USERID, PASSWORD, NETGAIN, BALANCE, HASCHEATED) VALUES (?, ?, ?, ?, ?)
+                    ''', (user.userid, user.password, user.netgain, user.bankroll, user.hascheated))
+                break
+            except sqlite3.OperationalError as e:
+                if attempt < retries - 1:
+                    print(f"Attempt {attempt + 1}: Error adding user: {e}. Retrying...")
+                    time.sleep(1)
+                else:
+                    print("Failed to add user after multiple attempts. Please try again later.")
+
+    def login_user(self, userid, password):
+        cursor = self.connection.cursor()
+        cursor.execute('SELECT * FROM USER WHERE USERID=? AND PASSWORD=?', (userid, password))
+        user_record = cursor.fetchone()
+        if user_record:
+            print("Login successful!")
+            return User(user_record[0], user_record[3], password)
+        else:
+            print("Login failed!")
+            return None
+
+    def update_user_cheating(self, userid, hascheated):
+        retries = 3
+        for attempt in range(retries):
+            try:
+                with self.connection:
+                    self.connection.execute('''
+                        UPDATE USER
+                        SET HASCHEATED = ?
+                        WHERE USERID = ?
+                    ''', (hascheated, userid))
+                break
+            except sqlite3.OperationalError as e:
+                if attempt < retries - 1:
+                    print(f"Attempt {attempt + 1}: Error updating user cheating stats: {e}. Retrying...")
+                    time.sleep(1)
+                else:
+                    print("Failed to update user cheating stats after multiple attempts. Please try again later.")
 
     def cheat_attempt(self):
         return random.random() < 0.5  # 50% chance of being caught
@@ -1868,49 +1951,64 @@ class Casino:
 
 
 def play_baccarat():
-    baccarat_game = Baccarat()
+    global current_user
+    if not current_user:
+        messagebox.showerror("Error", "No user is currently logged in.")
+        return
 
-    baccarat_window = tk.Toplevel(root)
-    baccarat_window.title("Baccarat Game")
+    try:
+        baccarat_game = Baccarat()
 
-    game_frame = tk.Frame(baccarat_window, padx=20, pady=20)
-    game_frame.pack(padx=20, pady=20)
+        baccarat_window = tk.Toplevel(root)
+        baccarat_window.title("Baccarat Game")
 
-    welcome_label = tk.Label(game_frame, text=f"Welcome, {current_user.userid}!", font=("Arial", 24))
-    welcome_label.pack(pady=20)
+        game_frame = tk.Frame(baccarat_window, padx=20, pady=20)
+        game_frame.pack(padx=20, pady=20)
 
-    bankroll_label = tk.Label(game_frame, text=f"Bankroll: ${current_user.bankroll}", font=("Arial", 16))
-    bankroll_label.pack()
+        welcome_label = tk.Label(game_frame, text=f"Welcome, {current_user.userid}!", font=("Arial", 24))
+        welcome_label.pack(pady=20)
 
-    bet_label = tk.Label(game_frame, text="Enter your bet:", font=("Arial", 16))
-    bet_label.pack(pady=10)
+        bankroll_label = tk.Label(game_frame, text=f"Bankroll: ${current_user.bankroll}", font=("Arial", 16))
+        bankroll_label.pack()
 
-    bet_entry = tk.Entry(game_frame, font=("Arial", 16))
-    bet_entry.pack()
+        bet_label = tk.Label(game_frame, text="Enter your bet:", font=("Arial", 16))
+        bet_label.pack(pady=10)
 
-    def play_baccarat_game():
-        bet = int(bet_entry.get())
-        if bet > current_user.bankroll:
-            messagebox.showerror("Error", "Bet exceeds current bankroll.")
-            return
+        bet_entry = tk.Entry(game_frame, font=("Arial", 16))
+        bet_entry.pack()
 
-        player_hand, banker_hand, result = current_user.play_game(baccarat_game, casino, bet)
-        bankroll_label.config(text=f"Bankroll: ${current_user.bankroll}")
-        player_hand_label.config(text=f"Player Hand: {player_hand}")
-        banker_hand_label.config(text=f"Banker Hand: {banker_hand}")
+        result_text = tk.Text(game_frame, height=10, width=50, font=("Arial", 14))
+        result_text.pack(pady=20)
 
-    play_button = tk.Button(game_frame, text="Play Baccarat", command=play_baccarat_game, font=("Arial", 16))
-    play_button.pack(pady=20)
+        def play_baccarat_game():
+            try:
+                bet = int(bet_entry.get())
+                if bet > current_user.bankroll:
+                    messagebox.showerror("Error", "Bet exceeds current bankroll.")
+                    return
 
-    hands_frame = tk.Frame(game_frame)
-    hands_frame.pack(pady=10)
+                player_hand, banker_hand, result = current_user.play_game(baccarat_game, casino, bet)
+                bankroll_label.config(text=f"Bankroll: ${current_user.bankroll}")
+                result_text.delete("1.0", tk.END)
+                result_text.insert(tk.END, f"Player Hand: {player_hand}\n")
+                result_text.insert(tk.END, f"Banker Hand: {banker_hand}\n")
+                result_text.insert(tk.END, f"Result: {result}\n")
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred: {e}")
 
-    player_hand_label = tk.Label(hands_frame, text="Player Hand: ", font=("Arial", 16))
-    player_hand_label.pack()
+        play_button = tk.Button(game_frame, text="Play Baccarat", command=play_baccarat_game, font=("Arial", 16))
+        play_button.pack(pady=20)
 
-    banker_hand_label = tk.Label(hands_frame, text="Banker Hand: ", font=("Arial", 16))
-    banker_hand_label.pack()
+        def go_back():
+            baccarat_window.destroy()
+            show_main_page()
 
+        back_button = tk.Button(game_frame, text="Back", command=go_back, font=("Arial", 16))
+        back_button.pack(pady=10)
+
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred: {e}")
+        
 def play_poker():
     game = PokerGame()
   
