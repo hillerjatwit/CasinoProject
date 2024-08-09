@@ -1617,6 +1617,7 @@ def play_craps():
 
     while cont == 1 and bank > 0: 
 
+                            
 
                                  
         r = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
@@ -1635,14 +1636,12 @@ def play_craps():
         bettype = ttk.Label(r, text = f'Please select the kind of bet you would like to perform')    
         passbutton = ttk.Button(r, text = 'Pass Line Bet', width = 25, command = lambda:[play_game(1)]).grid(row = 5, column = 2)
         datetimepassbutton = ttk.Button(r, text = """Don't Pass Line Bet""", width = 25, command = lambda:[play_game(0)]).grid(row = 6, column = 2)
-        main_menu = ttk.Button(r, text='Go To Menu', width=25,command=lambda:[r.pack_forget(),show_main_page()] ).grid(row=7,column =2)
+
 
         dpassbutton = ttk.Button()
 
         def play_game(type):
-            max_roll = int((conn.query("SELECT GAMESALLOWED FROM GAMES WHERE GAMEID = 'Craps'"))[0])
-            #global roll_cnt
-            roll_cnt = max_roll #temporary variable to count down reroll attempts
+
             def dice_animation(dice, pos):
                 if (dice == 1):
                     dice = '⚀'
@@ -1656,7 +1655,7 @@ def play_craps():
                     dice = '⚄'
                 if (dice == 6):
                     dice = '⚅'
-                dice1 = Label(f, text = dice, font = ('Arial',100), width = 4).grid(row = 1, column = pos)
+                dice1 = Label(f, text = dice, font = ('Arial',100), width = 4).grid(row = 4, column = pos)
                 f.update_idletasks()    
 
             bank = get_bank()
@@ -1672,7 +1671,7 @@ def play_craps():
             f.pack(fill= "both", expand = True)
 
             userbet = int(user_entry.get())
-            if (((userbet % 1) == 0) and (userbet <= int(maxbet)) and (userbet > 0) and (userbet <= bank)):
+            if (((userbet % 1) == 0) and (userbet <= int(maxbet)) and (userbet > 0)):
                 r.pack_forget()
 
                 def roll_dice():
@@ -1691,35 +1690,23 @@ def play_craps():
                 print(roll)
                 timestamp = get_time()
                 if roll in (wincon):
-                    win = Label(f, text = f'You Won ${userbet}!').grid(row = 2, column = 1)
+                    win = Label(f, text = f'You Won ${userbet}!').grid(row = 6, column = 1)
                     bank += userbet
                 elif roll in (losecon):
-                    lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 2, column = 1)
+                    lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 6, column = 1)
                     bank -= userbet
                 else:
-                    while rolltotal not in (roll, 7, 13):#13 is a special case to break the while loop
+                    while rolltotal not in (roll, 7):
                         time.sleep(1)
-                        rroll = Label(f, text = f'Rerolling for {roll}...').grid(row = 2, column = 1)
-                        
-                        if (roll_cnt < 1):
-                            rolltotal = 13
-                            roll_stop = Label(f, text = f'You ran out of reroll attempts!').grid(row = 3, column = 2)
-                            f.update_idletasks
-                            time.sleep(1)
-                        else:   
-                            for i in range(max_roll):
-                                roll_cnt = roll_cnt - 1
-                                rrolls_left = Label(f, text = f'Reroll attempts left: {roll_cnt}').grid(row = 2, column = 2)
-                                f.update_idletasks
-                                time.sleep(1)
-                                rolltotal = roll_dice()
-                                print(f"({rolltotal})")
-                                continue
-                    if rolltotal not in (7,13):
-                        win = Label(f, text = f'You Won ${userbet}!').grid(row = 3, column = 1)
+                        rroll = Label(f, text = f'Rerolling for {roll}...').grid(row = 6, column = 1)
+                        f.update_idletasks
+                        rolltotal = roll_dice()
+                        print(f"({rolltotal})")
+                    if rolltotal != 7:
+                        win = Label(f, text = f'You Won ${userbet}!').grid(row = 7, column = 1)
                         bank += userbet
                     else:
-                        lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 3, column = 1)
+                        lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 7, column = 1)
                         bank -= userbet
                     f.update_idletasks()
 
@@ -1809,7 +1796,6 @@ def play_craps():
 
     else: #returns to main page
         show_main_page()
-
 
 def play_slots():
 
