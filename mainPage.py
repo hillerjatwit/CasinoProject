@@ -13,7 +13,7 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox, simpledialog
-
+from typing import Union
 from datetime import datetime
 from PIL import Image, ImageTk
 
@@ -540,17 +540,18 @@ class PokerGame:
             "10. High Card: When you haven't made any of the hands above, the highest card plays.\n"
         )
         messagebox.showinfo("Poker Hands and Rules", hands_rules)
-current_user = None
+
 # Function to handle user login
 def login():
-    global current_user  # Declare global variable to modify it within the function
+    db = sqlite3.connect("CasinoDB.db") 
+    cursor = db.cursor()
     conn = dbConnection()
 
     username = login_username_entry.get()
     password = login_password_entry.get()
     global user_db
     user_db = conn.queryall(
-        f"""SELECT USERID, PASSWORD, BALANCE
+        f"""SELECT USERID, PASSWORD
         FROM USER
         WHERE USERID = '{username}' 
         AND PASSWORD = '{password}'"""
@@ -567,13 +568,14 @@ def login():
 
     if user_db != []:
         messagebox.showinfo("Login Success", f"Welcome, {user_db[0][0]}!")
+        user_db = user_db[0]
         if isadmin == 0:
-            current_user = User(user_db[0][0], user_db[0][2], user_db[0][1])
             show_main_page()
         elif isadmin == 1:
             show_admin_main_page()
     else:
         messagebox.showerror("Login Failed", "Invalid username or password")
+
 
 
     # if username in user_db and user_db[0] == password:
@@ -622,9 +624,10 @@ def show_main_page():
     login_frame.pack_forget()
     admin_main_frame.pack_forget()
     signup_frame.pack_forget()
-    ischeat = conn.query(f"SELECT HASCHEATED FROM USER WHERE USERID = '{user_db[0][0]}'")
-    if ischeat and ischeat[0] == '1':
+    ischeat=conn.query(f"SELECT HASCHEATED FROM USER WHERE USERID = '{user_db[0]}'")
+    if ischeat[0]=='1':
         main_frame.forget()
+        cheaterpage=tk.Frame(root, padx=20, pady=20)
         cheaterpage = tk.Frame(root, padx=20, pady=20)
         messagebox.showinfo("CHEAT", "CHEATER DETECTED!! LOGGING OUT!")
         main_frame.pack_forget()
@@ -661,8 +664,609 @@ def show_signup_page():
 # Placeholder functions for games
 def play_blackjack():
     messagebox.showinfo("Blackjack", "Starting Blackjack game...")
+    
+    root.withdraw()
+    
+    root_bj = Tk()
+    root_bj.title('Blackjack')
+    root_bj.geometry('1500x1000')
+    root_bj.configure(background="green")
+    
+    
+    class dbConnection: #FOR EASE OF USE
+
+        DatabaseURI="CasinoDB.db"
+        cur=None
+        db=None
+        
+        def __init__(self):     
+            self.db = sqlite3.connect(self.DatabaseURI)
+            self.cur = self.db.cursor()
+            
+        def query(self, query):     #IF YOU WANT TO RUN A QUERY
+            self.cur.execute(query)
+            return self.cur.fetchone()
+
+        def queryall(self, query):     #IF YOU WANT TO RUN A QUERY
+            self.cur.execute(query)
+            return self.cur.fetchall()    
+
+        def queryExecute(self, query):      #IF YOU WANT TO RUN AN EXCECUTABLE
+            self.cur.execute(query)
+            self.db.commit()
+
+    class Card_BJ:
+        def __init__(self, label: str, suit: str):
+            self.label = label
+            self.suit = suit
+            self.value = self._get_value()
+        
+        def _get_value(self) -> Union[int, tuple]:
+            if self.label in ("2", "3", "4", "5", "6", "7", "8", "9", "10"):
+                return int(self.label)
+            if self.label in ("J", "Q", "K"):
+                return 10
+            if self.label == "A":
+                return 11
+            raise ValueError("Bad Label")
+    
+        def _get_name(self):
+            return f"{self.label}_of_{self.suit}"
+        
+    class Deck_BJ:
+        def __init__ (self):
+            self.cards = []
+            self._build()
+            
+        def _build(self):
+            for suit in ["spades", "clubs", "diamonds", "hearts"]:
+                for v in ("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"):
+                    self.cards.append(Card_BJ(v,suit))
+        
+    def getUserInfo():
+        global username
+        
+        username = "user3"
+        conn = dbConnection()
+        return conn.queryall(
+            f"SELECT BALANCE FROM USER WHERE USERID = '{username}'"
+        )
+        
+    def place_bet():
+        global userMoney, Bet, Betplaced, username
+        try:
+            bet_amount = int(bet_entry.get())
+            userMoney = int(userMoney)
+            if int(bet_amount) > userMoney:
+                messagebox.showwarning("Insufficient Funds", "You do not have enough money to place this bet.")
+                return False
+            else:
+                Bet = bet_amount
+                newBalance = userMoney - bet_amount
+                conn = dbConnection()
+                conn.queryExecute(
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                )
+                userMoney = newBalance
+                updateLabels()
+                return True
+        except ValueError:
+            messagebox.showwarning("Invalid Bet", "Please enter a valid number for the bet amount.")
+            
+    def updateLabels():
+        money_label.config(text=f"Money: ${userMoney}")
+        bet_label.config(text=f"Current Bet: ${Bet}")
+        
+    def stand():
+        global isShowing, dealer_image1, userMoney
+        
+        if (not isShowing):
+            isShowing = True
+            dealer_image1 = resize_cards(f'images/cards/{dealer[0]._get_name()}.png')
+            dealer_label_1.config(image=dealer_image1)
+            
+        
+        player_total = 0
+        dealer_total = 0
+        
+        
+        for score in dealer_score:
+            dealer_total += score
+            
+        for score in player_score:
+            player_total += score
+            
+        
+        card_button.config(state="disabled")
+        stand_button.config(state="disabled")
+        
+        if status["player"] != "bust":
+            if status["dealer"] == "stand":
+                if dealer_total > player_total:
+                    messagebox.showinfo("Dealer Wins", f"Player: {player_total}  Dealer: {dealer_total}")
+                    return
+                elif dealer_total < player_total:
+                    newBalance = userMoney + (2 * Bet)
+                    userMoney = newBalance
+                    conn = dbConnection()
+                    conn.queryExecute(
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                    )
+                    messagebox.showinfo("Player Wins", f"Player: {player_total}  Dealer: {dealer_total}")
+                    return
+                else:
+                    newBalance = userMoney + Bet
+                    userMoney = newBalance
+                    conn = dbConnection()
+                    conn.queryExecute(
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                    )
+                    messagebox.showinfo("Push", f"Player: {player_total}  Dealer: {dealer_total}")
+                    return
+            elif status["dealer"] == "hit":
+                dealer_hit()
+                stand()
+            elif status["dealer"] == "win":
+                if dealer_total == player_total:
+                    newBalance = userMoney + Bet
+                    userMoney = newBalance
+                    conn = dbConnection()
+                    conn.queryExecute(
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                    )
+                    messagebox.showinfo("Push", f"Player: {player_total}  Dealer: {dealer_total}")
+                    return
+                messagebox.showinfo("Dealer Wins", f"Player: {player_total}  Dealer: 21")
+                return
+            elif status["dealer"] == "bust":
+                newBalance = userMoney + (2 * Bet)
+                userMoney = newBalance
+                conn = dbConnection()
+                conn.queryExecute(
+                f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                )
+                messagebox.showinfo("Player Wins", f"Player: {player_total}  Dealer: {dealer_total}")
+                return
+        else:
+            status["dealer"] = "win"
+            messagebox.showinfo("Dealer Wins", f"Player: {player_total}  Dealer: {dealer_total}")
+            return
+            
+        updateLabels()
+            
+    def resize_cards(card):
+        # Open the image
+        our_card_img = Image.open(card)
+
+        # Resize The Image
+        our_card_resize_image = our_card_img.resize((150, 218))
+        
+        # output the card
+        global our_card_image
+        our_card_image = ImageTk.PhotoImage(our_card_resize_image, master=root_bj)
+
+        # Return that card
+        return our_card_image
+
+    def generate_deck():
+        D = Deck_BJ()
+        return D.cards
+    
+    def startGame():
+        
+        card_button.config(state="disabled")
+        stand_button.config(state="disabled")
+
+        isBetPlaced = place_bet()
+        
+        if isBetPlaced:
+            shuffle()
+        else:
+            return
+        
+    def shuffle():
+        global status, player_wins, dealer_wins, isShowing, Bet, Betplaced, count, first
+        player_wins = 0
+        dealer_wins = 0
+        isShowing = False
+        
+        
+        
+            #reset images
+        dealer_label_1.config(image='')
+        dealer_label_2.config(image='')
+        dealer_label_3.config(image='')
+        dealer_label_4.config(image='')
+        dealer_label_5.config(image='')
+        player_label_1.config(image='')
+        player_label_2.config(image='')
+        player_label_3.config(image='')
+        player_label_4.config(image='')
+        player_label_5.config(image='')
+        
+        status = {"dealer":"no", "player":"no"}
+        
+        
+        card_button.config(state="normal")
+        stand_button.config(state="normal")
+        
+        global D
+        D = generate_deck()
+        
+        global dealer, player, dealer_spot, dealer_score, player_spot, player_score
+        dealer = []
+        player = []
+        dealer_score = []
+        player_score = []
+        dealer_spot = 0
+        player_spot = 0
+        
+        dealer_hit()
+        dealer_hit()
+        
+        player_hit()
+        player_hit()
+        
+        
+    def dealer_hit():
+        global dealer_spot, dealer_total, player_total, player_score, D
+        
+        if dealer_spot <= 5:
+            try:
+                
+                dealer_card = random.choice(D)
+                D.remove(dealer_card)
+                dealer.append(dealer_card)
+                dealer_score.append(dealer_card._get_value())
+                
+                global dealer_image1, dealer_image2, dealer_image3, dealer_image4, dealer_image5
+                
+                if dealer_spot == 0:
+                    # Resize Card
+                    dealer_image1 = resize_cards(f'images/cards/BackOfCard.png')
+                    # Output Card To Screen
+                    dealer_label_1.config(image=dealer_image1)
+                    # Increment our player spot counter
+                    dealer_spot += 1
+                elif dealer_spot == 1:
+                    # Resize Card
+                    dealer_image2 = resize_cards(f'images/cards/{dealer_card._get_name()}.png')
+                    # Output Card To Screen
+                    dealer_label_2.config(image=dealer_image2)
+                    # Increment our player spot counter
+                    dealer_spot += 1
+                elif dealer_spot == 2:
+                    # Resize Card
+                    dealer_image3 = resize_cards(f'images/cards/{dealer_card._get_name()}.png')
+                    # Output Card To Screen
+                    dealer_label_3.config(image=dealer_image3)
+                    # Increment our player spot counter
+                    dealer_spot += 1
+                elif dealer_spot == 3:
+                    # Resize Card
+                    dealer_image4 = resize_cards(f'images/cards/{dealer_card._get_name()}.png')
+                    # Output Card To Screen
+                    dealer_label_4.config(image=dealer_image4)
+                    # Increment our player spot counter
+                    dealer_spot += 1
+                elif dealer_spot == 4:
+                    # Resize Card
+                    dealer_image5 = resize_cards(f'images/cards/{dealer_card._get_name()}.png')
+                    # Output Card To Screen
+                    dealer_label_5.config(image=dealer_image5)
+                    # Increment our player spot counter
+                    dealer_spot += 1
+                    
+            except:
+                root_bj.title("Exception")
+                
+            validateGame("dealer")
+            
+    def player_hit():
+        
+        #Take card from Deck and Show on GUI, check blackjack else where
+        
+        global player_spot, player_total, dealer_total, player_score, D
+        if player_spot <= 5:
+            try:
+                player_card = random.choice(D)
+                D.remove(player_card)
+                player.append(player_card)
+                player_score.append(player_card._get_value())
+                
+                global player_image1, player_image2, player_image3, player_image4, player_image5
+                
+                
+                if player_spot == 0:
+                    # Resize Card
+                    player_image1 = resize_cards(f'images/cards/{player_card._get_name()}.png')
+                    # Output Card To Screen
+                    player_label_1.config(image=player_image1)
+                    # Increment our player spot counter
+                    player_spot += 1
+                elif player_spot == 1:
+                    # Resize Card
+                    player_image2 = resize_cards(f'images/cards/{player_card._get_name()}.png')
+                    # Output Card To Screen
+                    player_label_2.config(image=player_image2)
+                    # Increment our player spot counter
+                    player_spot += 1
+                elif player_spot == 2:
+                    # Resize Card
+                    player_image3 = resize_cards(f'images/cards/{player_card._get_name()}.png')
+                    # Output Card To Screen
+                    player_label_3.config(image=player_image3)
+                    # Increment our player spot counter
+                    player_spot += 1
+                elif player_spot == 3:
+                    # Resize Card
+                    player_image4 = resize_cards(f'images/cards/{player_card._get_name()}.png')
+                    # Output Card To Screen
+                    player_label_4.config(image=player_image4)
+                    # Increment our player spot counter
+                    player_spot += 1
+                elif player_spot == 4:
+                    # Resize Card
+                    player_image5 = resize_cards(f'images/cards/{player_card._get_name()}.png')
+                    # Output Card To Screen
+                    player_label_5.config(image=player_image5)
+                    # Increment our player spot counter
+                    player_spot += 1
+                
+            except:
+                #Add new deck to old deck
+                root_bj.title("Exception")
+                
+            validateGame("player")
+            
+    def validateGame(player):
+        
+        global dealer_total, player_total, dealer_score, player_score, aceChanged
+
+        dealer_total = 0
+        player_total = 0
+        aceChanged = False
+        
+        if player == "dealer":
+            
+            #Calculate total
+            for score in dealer_score:
+                dealer_total += score
+                
+            if dealer_total > 21:
+                for i in range(0, len(dealer_score), 1):
+                    #Check for ace if one change it
+                    if dealer_score[i] == 11:
+                        dealer_score[i] = 1
+                        aceChanged = True
+                        continue
+                #If Ace was changed recalc total
+                if aceChanged:
+                    dealer_total = 0
+                    for score in dealer_score:
+                        dealer_total += score
+                    #Check if bust again    
+                    if dealer_total > 21:
+                        #Check for another ace
+                        for i in range(0, len(dealer_score), 1):
+                            if dealer_score[i] == 11:
+                                dealer_score[i] = 1
+                                
+                                dealer_total = 0
+                                for score in dealer_score:
+                                    dealer_total += score
+                                if dealer_score == 21:
+                                    status[player] = "win"
+                                elif dealer_score >= 17:
+                                    status[player] = "stand"
+                                else:
+                                    status[player] = "hit"
+                                continue
+                    elif dealer_total == 21:
+                        status[player] = "win"
+                
+                    elif dealer_total >= 17:
+                        status[player] = "stand"
+                
+                    else:
+                        status[player] = "hit"
+                        
+                else:
+                    status[player] = "bust"
+                
+            elif dealer_total == 21:
+                status[player] = "win"
+                
+            elif dealer_total >= 17:
+                status[player] = "stand"
+                
+            else:
+                status[player] = "hit"
+                
+        elif player == "player":
+            
+            for score in player_score:
+                player_total += score
+            for score in dealer_score:
+                dealer_total += score
+                
+            if player_total > 21:
+                for i in range(0, len(player_score), 1):
+                    if player_score[i] == 11:
+                        player_score[i] = 1
+                        aceChanged = True
+                        continue
+                        
+                
+                if aceChanged:
+                    player_total = 0
+                    for score in player_score:
+                        player_total += score
+                    
+                    if player_total > 21:
+                        for i in range(0, len(player_score), 1):
+                            if player_score[i] == 11:
+                                player_score[i] = 1
+                                
+                                player_total = 0
+                                for score in player_score:
+                                    player_total += score
+                                    
+                                if player_total == 21:
+                                    status[player] = "win"
+                                else:
+                                    status[player] = "no"
+                                continue
+                    elif player_total == 21:
+                        status[player] = "win"
+                    else:
+                        status[player] = "no"  
+                else:
+                    status[player] = "bust"          
+            
+            elif player_total == 21:
+                status[player] = "win"
+            else:
+                status[player] = "no"
+
+        
+        blackjack()
+            
+    def blackjack():
+        
+        global dealer_label_1, dealer_image1
+        
+        #Logic for first Cards
+        if len(dealer_score) == 2 and len(player_score) == 2:
+                if status["dealer"] == "win" and status["player"] == "win":
+                    card_button.conifg(state="disabled")
+                    stand_button.config(state="disabled")
+                    dealer_image1 = resize_cards(f'images/cards/{dealer[0]._get_name()}.png')
+                    dealer_label_1.config(image=dealer_image1)
+                    
+                    newBalance = userMoney + Bet
+                    conn = dbConnection()
+                    conn.queryExecute(
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                    )
+                    
+                    messagebox.showinfo("Push", "Tie")
+                elif status["dealer"] == "win":
+                    card_button.config(state="disabled")
+                    stand_button.config(state="disabled")
+                    dealer_image1 = resize_cards(f'images/cards/{dealer[0]._get_name()}.png')
+                    dealer_label_1.config(image=dealer_image1)
+                    
+                    messagebox.showinfo("Dealer Wins", "Blackjack, Dealer Wins")
+                elif status["player"] == "win":
+                    card_button.config(state="disabled")
+                    stand_button.config(state="disabled")
+                    dealer_image1 = resize_cards(f'images/cards/{dealer[0]._get_name()}.png')
+                    dealer_label_1.config(image=dealer_image1)
+                    
+                    newBalance = userMoney + (3 * Bet)
+                    userMoney = newBalance
+                    conn = dbConnection()
+                    conn.queryExecute(
+                    f"UPDATE USER SET BALANCE = {newBalance} WHERE USERID = '{username}'"
+                    )
+                    
+                    messagebox.showinfo("Player Wins", "Blackjack, Player Wins")   
+                    
+        else:
+            if status["player"] == "bust":
+                messagebox.showinfo("Dealer Wins", f"Player: {player_total}  Dealer: {dealer_total}")
+                
+        updateLabels()
+
+    def Close():
+        root_bj.destroy()
+        root.deiconify()
+        show_main_page()
+
+        
+        
+        
+    
+    global userMoney, Bet
+    
+    userMoney = str(getUserInfo())
+    userMoney = ''.join(e for e in userMoney if e.isalnum())
+    
+    Bet = 0
+    
+    bj_frame = Frame(root_bj, bg="green")
+    bj_frame.pack(pady=20)    
+    
+    dealer_frame = LabelFrame(bj_frame, text="Dealer", bd=0)
+    dealer_frame.pack(padx=20, ipadx=20)
+
+    player_frame = LabelFrame(bj_frame, text="Player", bd=0)
+    player_frame.pack(ipadx=20, pady=10)
+
+    # Put Dealer cards in frames
+    dealer_label_1 = Label(dealer_frame, text='')
+    dealer_label_1.grid(row=0, column=0, pady=20, padx=20)
+
+    dealer_label_2 = Label(dealer_frame, text='')
+    dealer_label_2.grid(row=0, column=1, pady=20, padx=20)
+
+    dealer_label_3 = Label(dealer_frame, text='')
+    dealer_label_3.grid(row=0, column=2, pady=20, padx=20)
+
+    dealer_label_4 = Label(dealer_frame, text='')
+    dealer_label_4.grid(row=0, column=3, pady=20, padx=20)
+
+    dealer_label_5 = Label(dealer_frame, text='')
+    dealer_label_5.grid(row=0, column=4, pady=20, padx=20)
+
+    # Put Player cards in frames
+    player_label_1 = Label(player_frame, text='')
+    player_label_1.grid(row=1, column=0, pady=20, padx=20)
+
+    player_label_2 = Label(player_frame, text='')
+    player_label_2.grid(row=1, column=1, pady=20, padx=20)
+
+    player_label_3 = Label(player_frame, text='')
+    player_label_3.grid(row=1, column=2, pady=20, padx=20)
+
+    player_label_4 = Label(player_frame, text='')
+    player_label_4.grid(row=1, column=3, pady=20, padx=20)
+
+    player_label_5 = Label(player_frame, text='')
+    player_label_5.grid(row=1, column=4, pady=20, padx=20)
+
+    # Create Button Frame
+    button_frame = Frame(root_bj, bg="green")
+    button_frame.pack(pady=20)
+
+    # Create a couple buttons
+    shuffle_button = Button(button_frame, text="Start", command=startGame)
+    shuffle_button.grid(row=0, column=0)
+
+    card_button = Button(button_frame, text="Hit Me", command=player_hit)
+    card_button.grid(row=0, column=1, padx=10)
+
+    stand_button = Button(button_frame, text="Stand", command=stand)
+    stand_button.grid(row=0, column=2, padx=10)
+
+    money_label = Label(root_bj, text=f"Money: ${userMoney}", font=("Helvetica", 18), bg="green", fg="white")
+    money_label.pack(pady=20)
+
+    bet_label = Label(root_bj, text=f"Current Bet: ${Bet}", font=("Helvetica", 18), bg="green", fg="white")
+    bet_label.pack(pady=20)
+
+    bet_entry = Entry(root_bj, font=("Helvetica", 18), width=10)
+    bet_entry.pack(pady=20)
+    
+    close_button = Button(button_frame, text="Close", command=Close)
+    close_button.grid(row=0, column=3, padx=20)
+    
+    root_bj.mainloop()
+    
 
 #FUNCTION TO PLAY ROULETTE GAME
+#============================================================================
 def play_roulette():
     db = sqlite3.connect("CasinoDB.db")
     cursor = db.cursor()
@@ -706,7 +1310,10 @@ def play_roulette():
         return_to_main_menu()
 
     def show_roulette_board():
-        clear_game_frame()
+        board_window = Toplevel(root)
+        board_window.title("Roulette Board")
+        board_window.geometry("400x300")
+        
         numbers = [
             [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
             [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
@@ -721,17 +1328,16 @@ def play_roulette():
         }
 
         for row in numbers:
-            frame = tk.Frame(game_frame)
+            frame = tk.Frame(board_window)
             frame.pack()
             for num in row:
                 label = tk.Label(frame, text=num, borderwidth=2, relief="solid", width=5, height=2, bg=colors[num], fg="white")
                 label.pack(side="left")
 
-        zero_label = tk.Label(game_frame, text="0", borderwidth=2, relief="solid", width=5, height=2, bg=colors[0], fg="white")
+        zero_label = tk.Label(board_window, text="0", borderwidth=2, relief="solid", width=5, height=2, bg=colors[0], fg="white")
         zero_label.pack(pady=10)
         
-        tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
-        game_frame.pack(padx=20, pady=20)
+        tk.Button(board_window, text="Close", command=board_window.destroy).pack(pady=10)
 
     def start_game():
         ask_bet_amount()
@@ -799,7 +1405,7 @@ def play_roulette():
         tk.Button(game_frame, text="Place Bet", command=lambda: place_bet(entry_widgets[bet_type], bet_type)).pack(pady=10)
         tk.Button(game_frame, text="Return to Main Menu", command=return_to_main_menu).pack(pady=10)
         game_frame.pack(padx=20, pady=20)
-
+#========#=====================================================================================
     def place_bet(entry_widgets, bet_type):
         global total_money
 
@@ -808,6 +1414,16 @@ def play_roulette():
         except ValueError:
             messagebox.showerror("Invalid Input", "Please enter valid bet details.")
             return
+
+        # Deduct $10 for placing the bet
+        if total_money < bet_details['amount'] + 10:
+            messagebox.showerror("Insufficient Funds", "You do not have enough money to place this bet.")
+            return
+
+        total_money -= 10
+
+        # Deduct the bet amount from the user's total money
+        total_money -= bet_details['amount']
 
         result = spin_wheel()
         color = generate_color()
@@ -823,7 +1439,6 @@ def play_roulette():
             amount = winnings
             messagebox.showinfo("Congratulations", f"You win ${winnings}!")
         else:
-            total_money -= bet_details['amount']
             messagebox.showinfo("Sorry", "You lose.")
 
         update_money_label()
@@ -834,8 +1449,10 @@ def play_roulette():
             game_frame.pack_forget()
             start_frame.pack(padx=20, pady=20)
         else:
-            ask_bet_amount()  # Directly call ask_bet_amount to loop back to betting
+            show_continue_options()  # Give the player an option to continue or quit
 
+
+#======================================================================================
     def get_bet_details(bet_type, entry_widgets):
         bet_details = {'amount': bet_amount}
         entries = [entry.get() for label, entry in entry_widgets]
@@ -906,11 +1523,16 @@ def play_roulette():
         clear_game_frame()
         start_frame.pack(padx=20, pady=20)
 
+    def show_continue_options():
+        clear_game_frame()
+        tk.Label(game_frame, text="Would you like to continue playing or quit?", font=("Helvetica", 16)).pack(pady=10)
+        tk.Button(game_frame, text="Next", command=ask_bet_amount).pack(pady=10)
+        tk.Button(game_frame, text="Quit", command=return_to_main_menu).pack(pady=10)
+        game_frame.pack(padx=20, pady=20)
+
     def update_database(outcome, amount):
-        # Update USER table
         conn.queryExecute(f"UPDATE USER SET BALANCE = {total_money} WHERE USERID = '{user}'")
 
-        # Update game statistics
         if outcome == "Win":
             wins = conn.query(f"SELECT WINS FROM GAMES WHERE GAMEID = 'Roulette'")[0]
             conn.queryExecute(f"UPDATE GAMES SET WINS = {int(wins) + 1} WHERE GAMEID = 'Roulette'")
@@ -924,7 +1546,6 @@ def play_roulette():
         CasinoNet = conn.query(f"SELECT NETGAIN FROM GAMES WHERE GAMEID = 'Roulette'")[0]
         conn.queryExecute(f"UPDATE GAMES SET NETGAIN = {int(CasinoNet) + (total_money - oldestbank)} WHERE GAMEID = 'Roulette'")
 
-        # Record game history
         dt_string = datetime.now().strftime(f"%Y-%m-%d-%H:%M:%S")
         conn.queryExecute(f"INSERT INTO HISTORY VALUES ('{dt_string}', 'Roulette', '{user}', '{outcome}', {abs(total_money - oldestbank)})")
         netgain = conn.query(f"SELECT NETGAIN FROM USER WHERE USERID = '{user}'")[0]
@@ -934,11 +1555,9 @@ def play_roulette():
     root = tk.Tk()
     root.title("Roulette Game")
 
-    # Frame for starting the game and viewing rules and bet types
     start_frame = tk.Frame(root, bg='green', padx=20, pady=20)
     start_frame.pack(padx=20, pady=20)
 
-    # Add a big title for the game
     title_label = tk.Label(start_frame, text="Roulette", font=("Helvetica", 24), bg='green')
     title_label.grid(row=0, column=0, padx=10, pady=10)
 
@@ -957,12 +1576,13 @@ def play_roulette():
     button_start = ttk.Button(start_frame, text="Start Game", command=start_game)
     button_start.grid(row=5, column=0, padx=10, pady=10)
 
-    # Frame for the actual game
     game_frame = tk.Frame(root, bg='darkred', padx=20, pady=20)
 
     bet_type_var = tk.IntVar()
 
     root.mainloop()
+
+ 
 
 def play_poker():
     messagebox.showinfo("Poker", "Starting Poker game...")
@@ -996,7 +1616,10 @@ def play_craps():
     random.seed(time.time())    #GETTING RANDOM SEED FOR THE SPINS
 
     while cont == 1 and bank > 0: 
-                      
+
+                            
+
+                                 
         r = tk.Frame(root,padx=20,pady=20, width= 700, height=300)
         root.minsize(700, 300)
         r.pack(fill="both", expand=True)    
@@ -1013,14 +1636,12 @@ def play_craps():
         bettype = ttk.Label(r, text = f'Please select the kind of bet you would like to perform')    
         passbutton = ttk.Button(r, text = 'Pass Line Bet', width = 25, command = lambda:[play_game(1)]).grid(row = 5, column = 2)
         datetimepassbutton = ttk.Button(r, text = """Don't Pass Line Bet""", width = 25, command = lambda:[play_game(0)]).grid(row = 6, column = 2)
-        main_menu = ttk.Button(r, text='Go To Menu', width=25,command=lambda:[r.pack_forget(),show_main_page()] ).grid(row=7,column =2)
+
 
         dpassbutton = ttk.Button()
 
         def play_game(type):
-            max_roll = int((conn.query("SELECT GAMESALLOWED FROM GAMES WHERE GAMEID = 'Craps'"))[0])
-            #global roll_cnt
-            roll_cnt = max_roll #temporary variable to count down reroll attempts
+
             def dice_animation(dice, pos):
                 if (dice == 1):
                     dice = '⚀'
@@ -1034,7 +1655,7 @@ def play_craps():
                     dice = '⚄'
                 if (dice == 6):
                     dice = '⚅'
-                dice1 = Label(f, text = dice, font = ('Arial',100), width = 4).grid(row = 1, column = pos)
+                dice1 = Label(f, text = dice, font = ('Arial',100), width = 4).grid(row = 4, column = pos)
                 f.update_idletasks()    
 
             bank = get_bank()
@@ -1050,7 +1671,7 @@ def play_craps():
             f.pack(fill= "both", expand = True)
 
             userbet = int(user_entry.get())
-            if (((userbet % 1) == 0) and (userbet <= int(maxbet)) and (userbet > 0) and (userbet <= bank)):
+            if (((userbet % 1) == 0) and (userbet <= int(maxbet)) and (userbet > 0)):
                 r.pack_forget()
 
                 def roll_dice():
@@ -1069,35 +1690,23 @@ def play_craps():
                 print(roll)
                 timestamp = get_time()
                 if roll in (wincon):
-                    win = Label(f, text = f'You Won ${userbet}!').grid(row = 2, column = 1)
+                    win = Label(f, text = f'You Won ${userbet}!').grid(row = 6, column = 1)
                     bank += userbet
                 elif roll in (losecon):
-                    lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 2, column = 1)
+                    lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 6, column = 1)
                     bank -= userbet
                 else:
-                    while rolltotal not in (roll, 7, 13):#13 is a special case to break the while loop
+                    while rolltotal not in (roll, 7):
                         time.sleep(1)
-                        rroll = Label(f, text = f'Rerolling for {roll}...').grid(row = 2, column = 1)
-                        
-                        if (roll_cnt < 1):
-                            rolltotal = 13
-                            roll_stop = Label(f, text = f'You ran out of reroll attempts!').grid(row = 3, column = 2)
-                            f.update_idletasks
-                            time.sleep(1)
-                        else:   
-                            for i in range(max_roll):
-                                roll_cnt = roll_cnt - 1
-                                rrolls_left = Label(f, text = f'Reroll attempts left: {roll_cnt}').grid(row = 2, column = 2)
-                                f.update_idletasks
-                                time.sleep(1)
-                                rolltotal = roll_dice()
-                                print(f"({rolltotal})")
-                                continue
-                    if rolltotal not in (7,13):
-                        win = Label(f, text = f'You Won ${userbet}!').grid(row = 3, column = 1)
+                        rroll = Label(f, text = f'Rerolling for {roll}...').grid(row = 6, column = 1)
+                        f.update_idletasks
+                        rolltotal = roll_dice()
+                        print(f"({rolltotal})")
+                    if rolltotal != 7:
+                        win = Label(f, text = f'You Won ${userbet}!').grid(row = 7, column = 1)
                         bank += userbet
                     else:
-                        lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 3, column = 1)
+                        lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 7, column = 1)
                         bank -= userbet
                     f.update_idletasks()
 
@@ -1155,6 +1764,7 @@ def play_craps():
                 k.pack(fill="both", expand=True)
                 #UPDATE USER BALANCE
                 
+
                 #ASK USER IF THEY WANT TO CONTINUE
                 L1 = Label(k,text = "Would You Like to Continue?",width = 25).grid(row=3, column =2)
                 hidden9 = Label(k, text='', width=5).grid(row=1, column=0)
@@ -1174,11 +1784,15 @@ def play_craps():
             else:
                 messagebox.showerror("Bet cancelled", "Please enter a valid bet amount")
                 f.destroy()
+
+            
             
         #THE MAIN LOOP FOR THE TKINTER WINDOW
         r.mainloop()
         #r.pack_forget()
         #THE AMOUNT OF MONEY DEDUCTED FROM THE USERS BANK
+
+
 
     else: #returns to main page
         show_main_page()
@@ -1654,14 +2268,64 @@ def check_stats():
     add= 0
     y = [] 
     for i in data: 
-        x.append(add)	#x column contain data(1,2,3,4,5) 
-        y.append(i[0])	#y column contain data(1,2,3,4,5) 
+        x.append(add)	 
+        y.append(i[0])	
         add=add+1
-    plt.plot(x,y) 
+    plt.plot(x,y, marker = 'x', linestyle = '-', color = 'b') 
+    plt.axhline(0, color='red', linewidth=0.8) 
+    plt.title("Casino Profit/Loss Per Play")
     plt.title("HOUSE WINS/LOSSES")
     plt.show() 
             
- # Add Baccarat game code
+def check_profit():
+    db = sqlite3.connect("CasinoDB.db") 
+    cursor = db.cursor()
+
+    cursor.execute("SELECT RESULT, AMOUNT FROM HISTORY")
+    data = cursor.fetchall()
+
+    x = []  
+    y = []  
+    
+    for index, (result, amount) in enumerate(data):
+        if result == "Win":
+            y.append(amount)  #win
+        elif result == "Loss":
+            y.append(-amount)  # loss
+        
+        x.append(index + 1) 
+    
+
+    plt.plot(x, y, marker='x', linestyle='-', color='b')
+    plt.axhline(0, color='red', linewidth=0.8) 
+    plt.title("Casino Profit/Loss Per Play")
+    plt.xlabel("Number of Plays")
+    plt.ylabel("Profit/Loss")
+    plt.show()
+
+def check_players():
+    db = sqlite3.connect("CasinoDB.db") 
+    cursor = db.cursor()
+
+    cursor.execute("SELECT USERID, NETGAIN FROM USER")
+    data = cursor.fetchall()
+
+    users = [row[0] for row in data]
+    net_gains = [row[1] for row in data]
+
+    plt.figure(figsize=(10, 6))
+    positions = np.arange(len(users))
+
+    plt.bar(positions, net_gains, color='blue', alpha=0.7)  
+
+    plt.axhline(0, color='red', linewidth=0.8)  
+    plt.title("Total Net Gain/Loss per User")
+    plt.xlabel("Users")
+    plt.ylabel("Net Gain/Loss")
+    plt.xticks(positions, users)  
+    plt.show()
+
+
 
 class Baccarat:
     def __init__(self):
@@ -1690,7 +2354,7 @@ class Baccarat:
             winnings = bet
         elif banker_score > player_score:
             result = "Banker wins!"
-            user.record_history("Baccarat", "Loss", bet)  # Use positive bet amount
+            user.record_history("Baccarat", "Loss", -bet)
             self.losses += 1
             winnings = -bet
         else:
@@ -1740,12 +2404,12 @@ class User:
         self.bankroll = bankroll
         self.password = password
         self.netgain = 0
-        self.hascheated = 0
+        self.hascheated = "NO"
 
     def play_game(self, game, casino, bet):
         choice = messagebox.askquestion("Cheating Attempt", "Do you want to cheat?")
         if choice == 'yes':
-            self.hascheated = 1
+            self.hascheated = "YES"
             casino.update_user_cheating(self.userid, self.hascheated)
 
             if self.cheat_attempt():
@@ -1765,7 +2429,7 @@ class User:
                 with casino.connection:
                     casino.connection.execute('''
                         INSERT INTO HISTORY (TIMESTAMP, GAMEID, USERID, RESULT, AMOUNT) VALUES (?, ?, ?, ?, ?)
-                    ''', (timestamp, game_id, self.userid, result, abs(amount)))  # Use abs(amount)
+                    ''', (timestamp, game_id, self.userid, result, amount))
                 break
             except sqlite3.OperationalError as e:
                 if attempt < retries - 1:
@@ -1773,93 +2437,6 @@ class User:
                     time.sleep(1)
                 else:
                     print("Failed to record history after multiple attempts. Please try again later.")
-
-    def cheat_attempt(self):
-        return random.random() < 0.5  # 50% chance of being caught
-
-class Casino:
-    def __init__(self, name, db_path):
-        self.name = name
-        self.connection = sqlite3.connect(db_path, timeout=10)
-        self.create_tables()
-
-    def create_tables(self):
-        with self.connection:
-            self.connection.execute('''
-                CREATE TABLE IF NOT EXISTS USER (
-                    USERID TEXT PRIMARY KEY NOT NULL,
-                    PASSWORD TEXT NOT NULL,
-                    NETGAIN INTEGER NOT NULL,
-                    BALANCE INTEGER NOT NULL,
-                    HASCHEATED INTEGER NOT NULL DEFAULT 0
-                )
-            ''')
-            self.connection.execute('''
-                CREATE TABLE IF NOT EXISTS GAMES (
-                    GAMEID TEXT PRIMARY KEY NOT NULL,
-                    NETGAIN INTEGER NOT NULL,
-                    GAMESALLOWED INTEGER NOT NULL,
-                    MAXBET INTEGER NOT NULL,
-                    TIMESPLAYED INTEGER NOT NULL,
-                    WINS INT NOT NULL DEFAULT 0,
-                    LOSSES INT NOT NULL DEFAULT 0
-                )
-            ''')
-            self.connection.execute('''
-                CREATE TABLE IF NOT EXISTS HISTORY (
-                    TIMESTAMP DATE NOT NULL,
-                    GAMEID TEXT NOT NULL,
-                    USERID TEXT NOT NULL,
-                    RESULT TEXT NOT NULL,
-                    AMOUNT INTEGER NOT NULL,
-                    PRIMARY KEY(TIMESTAMP)
-                )
-            ''')
-
-    def add_user(self, user):
-        retries = 3
-        for attempt in range(retries):
-            try:
-                with self.connection:
-                    self.connection.execute('''
-                        INSERT INTO USER (USERID, PASSWORD, NETGAIN, BALANCE, HASCHEATED) VALUES (?, ?, ?, ?, ?)
-                    ''', (user.userid, user.password, user.netgain, user.bankroll, user.hascheated))
-                break
-            except sqlite3.OperationalError as e:
-                if attempt < retries - 1:
-                    print(f"Attempt {attempt + 1}: Error adding user: {e}. Retrying...")
-                    time.sleep(1)
-                else:
-                    print("Failed to add user after multiple attempts. Please try again later.")
-
-    def login_user(self, userid, password):
-        cursor = self.connection.cursor()
-        cursor.execute('SELECT * FROM USER WHERE USERID=? AND PASSWORD=?', (userid, password))
-        user_record = cursor.fetchone()
-        if user_record:
-            print("Login successful!")
-            return User(user_record[0], user_record[3], password)
-        else:
-            print("Login failed!")
-            return None
-
-    def update_user_cheating(self, userid, hascheated):
-        retries = 3
-        for attempt in range(retries):
-            try:
-                with self.connection:
-                    self.connection.execute('''
-                        UPDATE USER
-                        SET HASCHEATED = ?
-                        WHERE USERID = ?
-                    ''', (hascheated, userid))
-                break
-            except sqlite3.OperationalError as e:
-                if attempt < retries - 1:
-                    print(f"Attempt {attempt + 1}: Error updating user cheating stats: {e}. Retrying...")
-                    time.sleep(1)
-                else:
-                    print("Failed to update user cheating stats after multiple attempts. Please try again later.")
 
     def cheat_attempt(self):
         return random.random() < 0.5  # 50% chance of being caught
@@ -1951,64 +2528,49 @@ class Casino:
 
 
 def play_baccarat():
-    global current_user
-    if not current_user:
-        messagebox.showerror("Error", "No user is currently logged in.")
-        return
+    baccarat_game = Baccarat()
 
-    try:
-        baccarat_game = Baccarat()
+    baccarat_window = tk.Toplevel(root)
+    baccarat_window.title("Baccarat Game")
 
-        baccarat_window = tk.Toplevel(root)
-        baccarat_window.title("Baccarat Game")
+    game_frame = tk.Frame(baccarat_window, padx=20, pady=20)
+    game_frame.pack(padx=20, pady=20)
 
-        game_frame = tk.Frame(baccarat_window, padx=20, pady=20)
-        game_frame.pack(padx=20, pady=20)
+    welcome_label = tk.Label(game_frame, text=f"Welcome, {current_user.userid}!", font=("Arial", 24))
+    welcome_label.pack(pady=20)
 
-        welcome_label = tk.Label(game_frame, text=f"Welcome, {current_user.userid}!", font=("Arial", 24))
-        welcome_label.pack(pady=20)
+    bankroll_label = tk.Label(game_frame, text=f"Bankroll: ${current_user.bankroll}", font=("Arial", 16))
+    bankroll_label.pack()
 
-        bankroll_label = tk.Label(game_frame, text=f"Bankroll: ${current_user.bankroll}", font=("Arial", 16))
-        bankroll_label.pack()
+    bet_label = tk.Label(game_frame, text="Enter your bet:", font=("Arial", 16))
+    bet_label.pack(pady=10)
 
-        bet_label = tk.Label(game_frame, text="Enter your bet:", font=("Arial", 16))
-        bet_label.pack(pady=10)
+    bet_entry = tk.Entry(game_frame, font=("Arial", 16))
+    bet_entry.pack()
 
-        bet_entry = tk.Entry(game_frame, font=("Arial", 16))
-        bet_entry.pack()
+    def play_baccarat_game():
+        bet = int(bet_entry.get())
+        if bet > current_user.bankroll:
+            messagebox.showerror("Error", "Bet exceeds current bankroll.")
+            return
 
-        result_text = tk.Text(game_frame, height=10, width=50, font=("Arial", 14))
-        result_text.pack(pady=20)
+        player_hand, banker_hand, result = current_user.play_game(baccarat_game, casino, bet)
+        bankroll_label.config(text=f"Bankroll: ${current_user.bankroll}")
+        player_hand_label.config(text=f"Player Hand: {player_hand}")
+        banker_hand_label.config(text=f"Banker Hand: {banker_hand}")
 
-        def play_baccarat_game():
-            try:
-                bet = int(bet_entry.get())
-                if bet > current_user.bankroll:
-                    messagebox.showerror("Error", "Bet exceeds current bankroll.")
-                    return
+    play_button = tk.Button(game_frame, text="Play Baccarat", command=play_baccarat_game, font=("Arial", 16))
+    play_button.pack(pady=20)
 
-                player_hand, banker_hand, result = current_user.play_game(baccarat_game, casino, bet)
-                bankroll_label.config(text=f"Bankroll: ${current_user.bankroll}")
-                result_text.delete("1.0", tk.END)
-                result_text.insert(tk.END, f"Player Hand: {player_hand}\n")
-                result_text.insert(tk.END, f"Banker Hand: {banker_hand}\n")
-                result_text.insert(tk.END, f"Result: {result}\n")
-            except Exception as e:
-                messagebox.showerror("Error", f"An error occurred: {e}")
+    hands_frame = tk.Frame(game_frame)
+    hands_frame.pack(pady=10)
 
-        play_button = tk.Button(game_frame, text="Play Baccarat", command=play_baccarat_game, font=("Arial", 16))
-        play_button.pack(pady=20)
+    player_hand_label = tk.Label(hands_frame, text="Player Hand: ", font=("Arial", 16))
+    player_hand_label.pack()
 
-        def go_back():
-            baccarat_window.destroy()
-            show_main_page()
+    banker_hand_label = tk.Label(hands_frame, text="Banker Hand: ", font=("Arial", 16))
+    banker_hand_label.pack()
 
-        back_button = tk.Button(game_frame, text="Back", command=go_back, font=("Arial", 16))
-        back_button.pack(pady=10)
-
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred: {e}")
-        
 def play_poker():
     game = PokerGame()
   
@@ -2096,7 +2658,15 @@ logout_button = ttk.Button(main_frame, text="Logout", command=show_login_page)
 logout_button.pack(pady=10)
 
 #Create Admins Page 
-statistics_button = ttk.Button(admin_main_frame, text="Check Stats", command=check_stats)
+statistics_button = ttk.Button(admin_main_frame, text="Wins Vs Losses", command=check_stats)
+statistics_button.pack(pady=10)
+
+
+statistics_button = ttk.Button(admin_main_frame, text="Profit Per Play", command=check_profit)
+statistics_button.pack(pady=10)
+
+
+statistics_button = ttk.Button(admin_main_frame, text="Different Users Net Gains", command=check_players)
 statistics_button.pack(pady=10)
 
 admin_logout_button = ttk.Button(admin_main_frame, text="Logout", command=show_login_page)
