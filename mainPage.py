@@ -643,6 +643,7 @@ def show_main_page():
 def show_admin_main_page():
     login_frame.pack_forget()
     signup_frame.pack_forget()
+    balance_frame.pack_forget()
     admin_main_frame.pack_forget()
     admin_main_frame.pack(fill="both", expand=True)
 
@@ -659,6 +660,13 @@ def show_signup_page():
     main_frame.pack_forget()
     admin_main_frame.pack_forget()
     signup_frame.pack(fill="both", expand=True)
+
+def show_add_balance_page():
+    login_frame.pack_forget()
+    main_frame.pack_forget()
+    admin_main_frame.pack_forget()
+    balance_frame.pack(fill="both", expand=True)
+
 
 
 # Placeholder functions for games
@@ -1637,11 +1645,14 @@ def play_craps():
         passbutton = ttk.Button(r, text = 'Pass Line Bet', width = 25, command = lambda:[play_game(1)]).grid(row = 5, column = 2)
         datetimepassbutton = ttk.Button(r, text = """Don't Pass Line Bet""", width = 25, command = lambda:[play_game(0)]).grid(row = 6, column = 2)
 
+        main_menu = ttk.Button(r, text='Go To Menu', width=25,command=lambda:[r.pack_forget(),show_main_page()] ).grid(row=7,column =2)
 
         dpassbutton = ttk.Button()
 
         def play_game(type):
-
+            max_roll = int((conn.query("SELECT GAMESALLOWED FROM GAMES WHERE GAMEID = 'Craps'"))[0])
+            #global roll_cnt
+            roll_cnt = max_roll #temporary variable to count down reroll attempts
             def dice_animation(dice, pos):
                 if (dice == 1):
                     dice = '⚀'
@@ -1655,7 +1666,7 @@ def play_craps():
                     dice = '⚄'
                 if (dice == 6):
                     dice = '⚅'
-                dice1 = Label(f, text = dice, font = ('Arial',100), width = 4).grid(row = 4, column = pos)
+                dice1 = Label(f, text = dice, font = ('Arial',100), width = 4).grid(row = 1, column = pos)
                 f.update_idletasks()    
 
             bank = get_bank()
@@ -1690,23 +1701,35 @@ def play_craps():
                 print(roll)
                 timestamp = get_time()
                 if roll in (wincon):
-                    win = Label(f, text = f'You Won ${userbet}!').grid(row = 6, column = 1)
+                    win = Label(f, text = f'You Won ${userbet}!').grid(row = 2, column = 1)
                     bank += userbet
                 elif roll in (losecon):
-                    lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 6, column = 1)
+                    lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 2, column = 1)
                     bank -= userbet
                 else:
-                    while rolltotal not in (roll, 7):
+                    while rolltotal not in (roll, 7, 13):#13 is a special case to break the while loop
                         time.sleep(1)
-                        rroll = Label(f, text = f'Rerolling for {roll}...').grid(row = 6, column = 1)
-                        f.update_idletasks
-                        rolltotal = roll_dice()
-                        print(f"({rolltotal})")
-                    if rolltotal != 7:
-                        win = Label(f, text = f'You Won ${userbet}!').grid(row = 7, column = 1)
+                        rroll = Label(f, text = f'Rerolling for {roll}...').grid(row = 2, column = 1)
+
+                        if (roll_cnt < 1):
+                            rolltotal = 13
+                            roll_stop = Label(f, text = f'You ran out of reroll attempts!').grid(row = 3, column = 2)
+                            f.update_idletasks
+                            time.sleep(1)
+                        else:   
+                            for i in range(max_roll):
+                                roll_cnt = roll_cnt - 1
+                                rrolls_left = Label(f, text = f'Reroll attempts left: {roll_cnt}').grid(row = 2, column = 2)
+                                f.update_idletasks
+                                time.sleep(1)
+                                rolltotal = roll_dice()
+                                print(f"({rolltotal})")
+                                continue
+                    if rolltotal not in (7,13):
+                        win = Label(f, text = f'You Won ${userbet}!').grid(row = 3, column = 1)
                         bank += userbet
                     else:
-                        lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 7, column = 1)
+                        lose = Label(f, text = f'You Lost ${userbet}!').grid(row = 3, column = 1)
                         bank -= userbet
                     f.update_idletasks()
 
@@ -2041,14 +2064,14 @@ def play_slots():
                 Bar = ImageTk.PhotoImage(Bar1)
 
                 #RANDOM VALUE FOR WHAT SYMBOL THEY GET 
-                slot1 = random.randint(0, 10)
-                slotRes1 = [Apple, Apple, Cherry, Cherry, Grape, Grape, Orange, Orange, HorseShoe, HorseShoe, Bar][slot1]
+                slot1 = random.randint(0, 6)
+                slotRes1 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot1]
             
-                slot2 = random.randint(0, 10)
-                slotRes2 = [Apple, Apple, Cherry, Cherry, Grape, Grape, Orange, Orange, HorseShoe, HorseShoe, Bar][slot2]
+                slot2 = random.randint(0, 6)
+                slotRes2 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot2]
 
-                slot3 = random.randint(0, 10)
-                slotRes3 = [Apple, Apple, Cherry, Cherry, Grape, Grape, Orange, Orange, HorseShoe, HorseShoe, Bar][slot3]
+                slot3 = random.randint(0, 6)
+                slotRes3 = [Apple, Cherry, Grape, Orange, HorseShoe, Bar][slot3]
             
                 f.update_idletasks()        #ALLOWS FOR THE STRINGVAR'S TO BE UPDATED LIVE
 
@@ -2326,6 +2349,35 @@ def check_players():
     plt.show()
 
 
+def add_balance():
+    
+    # Connect to the database
+    db = sqlite3.connect("CasinoDB.db") 
+    cursor = db.cursor()
+
+    # Get the user input
+    usern = balance_user_entry.get()
+    balancen = balance_money_entry.get()
+
+    # Fetch all USERIDs from the USER table
+    cursor.execute("SELECT USERID FROM USER")
+    data = cursor.fetchall()
+
+    # Check if the input USERID exists in the database
+    user_exists = False
+    for row in data:
+        if row[0] == usern:
+            user_exists = True
+            break
+
+    if (user_exists == False):
+        messagebox.showwarning("INVALID USER",f"User {usern} Does Not Exist")
+    else:
+        cursor.execute(f"SELECT BALANCE FROM USER WHERE USERID = '{usern}'")
+        data = cursor.fetchone()
+        balance = int(data[0])+int(balancen)
+        cursor.execute(f"UPDATE USER SET BALANCE = {balance} WHERE USERID = '{usern}'")
+        db.commit()
 
 class Baccarat:
     def __init__(self):
@@ -2669,8 +2721,25 @@ statistics_button.pack(pady=10)
 statistics_button = ttk.Button(admin_main_frame, text="Different Users Net Gains", command=check_players)
 statistics_button.pack(pady=10)
 
+add_bal_button = ttk.Button(admin_main_frame, text="Add Balance", command=show_add_balance_page)
+add_bal_button.pack(pady=10)
+
 admin_logout_button = ttk.Button(admin_main_frame, text="Logout", command=show_login_page)
 admin_logout_button.pack(pady=10)
+
+
+balance_frame = tk.Frame(root, padx=20, pady=10)
+
+balance_user_entry_label = tk.Label(balance_frame, text="Enter User: ", font=("Arial", 12)).grid(pady=10)
+balance_user_entry = tk.Entry(balance_frame, font=("Arial", 12))
+balance_user_entry.grid(pady=10)
+
+balance_money_entry_label =tk.Label(balance_frame, text="Enter The Balance You Want To Add: ", font=("Arial", 12)).grid(pady=10)
+balance_money_entry = tk.Entry(balance_frame, font=("Arial", 12))
+balance_money_entry.grid(pady=10)
+add_balance_to_user = ttk.Button(balance_frame, text="Add Balance", command=add_balance).grid(pady=10)
+
+return_to_admin_frame= ttk.Button(balance_frame, text="Return", command=show_admin_main_page).grid(pady=10)
 
 # Start the Tkinter main loop
 root.mainloop()
