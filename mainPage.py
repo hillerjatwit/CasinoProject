@@ -2351,19 +2351,15 @@ def check_players():
 
 def add_balance():
     
-    # Connect to the database
     db = sqlite3.connect("CasinoDB.db") 
     cursor = db.cursor()
 
-    # Get the user input
     usern = balance_user_entry.get()
     balancen = balance_money_entry.get()
 
-    # Fetch all USERIDs from the USER table
     cursor.execute("SELECT USERID FROM USER")
     data = cursor.fetchall()
 
-    # Check if the input USERID exists in the database
     user_exists = False
     for row in data:
         if row[0] == usern:
