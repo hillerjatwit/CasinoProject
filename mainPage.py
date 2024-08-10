@@ -2295,7 +2295,6 @@ def check_stats():
         y.append(i[0])	
         add=add+1
     plt.plot(x,y, marker = 'x', linestyle = '-', color = 'b') 
-    plt.axhline(0, color='red', linewidth=0.8) 
     plt.title("Casino Profit/Loss Per Play")
     plt.title("HOUSE WINS/LOSSES")
     plt.show() 
