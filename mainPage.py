@@ -2451,20 +2451,35 @@ class User:
         self.bankroll = bankroll
         self.password = password
         self.netgain = 0
-        self.hascheated = "NO"
+        self.hascheated = 0  # 0 = not a cheater, 1 = cheater
 
-    def play_game(self, game, casino, bet):
+    def play_game(self, game, casino, bet, baccarat_window, bet_choice):
         choice = messagebox.askquestion("Cheating Attempt", "Do you want to cheat?")
         if choice == 'yes':
-            self.hascheated = "YES"
+            self.hascheated = 1
             casino.update_user_cheating(self.userid, self.hascheated)
 
             if self.cheat_attempt():
-                messagebox.showinfo("Cheating Attempt", "Cheater caught!")
-                self.bankroll -= 2 * bet  # Lose double the bet
+                messagebox.showinfo("Cheating Attempt", "Cheater caught! Logging you out.")
+                baccarat_window.destroy()  # Close the Baccarat game window
+                show_login_page()  # Log out the user by showing the login page
                 return [], [], "Cheater caught!"  # Return default values
 
         player_hand, banker_hand, result = game.play(self, bet)
+
+        # If the user tried to cheat and was not caught, force a win
+        if self.hascheated == 1:
+            if bet_choice.get() == "Player":
+                result = "Player wins!"
+                player_hand, banker_hand = game.draw_hand(), game.draw_hand()
+            elif bet_choice.get() == "Banker":
+                result = "Banker wins!"
+                player_hand, banker_hand = game.draw_hand(), game.draw_hand()
+            elif bet_choice.get() == "Tie":
+                result = "It's a tie!"
+                player_hand = game.draw_hand()
+                banker_hand = player_hand[:]  # Ensure both hands are identical for a tie
+
         messagebox.showinfo("Game Result", result)
         return player_hand, banker_hand, result
 
@@ -2575,18 +2590,28 @@ class Casino:
 
 
 def play_baccarat():
+    if not user_db:
+        messagebox.showerror("Error", "No user is currently logged in.")
+        return
+
     baccarat_game = Baccarat()
 
+    # Define the baccarat_window here
     baccarat_window = tk.Toplevel(root)
     baccarat_window.title("Baccarat Game")
 
     game_frame = tk.Frame(baccarat_window, padx=20, pady=20)
     game_frame.pack(padx=20, pady=20)
 
-    welcome_label = tk.Label(game_frame, text=f"Welcome, {current_user.userid}!", font=("Arial", 24))
+    # Use user_db for the logged-in user's information
+    welcome_label = tk.Label(game_frame, text=f"Welcome, {user_db[0]}!", font=("Arial", 24))
     welcome_label.pack(pady=20)
 
-    bankroll_label = tk.Label(game_frame, text=f"Bankroll: ${current_user.bankroll}", font=("Arial", 16))
+    # Retrieve the user's bankroll from the database
+    conn = dbConnection()
+    user_bankroll = int(conn.query(f"SELECT BALANCE FROM USER WHERE USERID = '{user_db[0]}'")[0])
+
+    bankroll_label = tk.Label(game_frame, text=f"Bankroll: ${user_bankroll}", font=("Arial", 16))
     bankroll_label.pack()
 
     bet_label = tk.Label(game_frame, text="Enter your bet:", font=("Arial", 16))
@@ -2595,14 +2620,52 @@ def play_baccarat():
     bet_entry = tk.Entry(game_frame, font=("Arial", 16))
     bet_entry.pack()
 
+    # Define bet_choice variable here
+    bet_choice = tk.StringVar(value="Player")
+
+    # Betting options
+    player_bet_button = tk.Radiobutton(game_frame, text="Bet on Player", variable=bet_choice, value="Player", font=("Arial", 16))
+    player_bet_button.pack(pady=5)
+
+    banker_bet_button = tk.Radiobutton(game_frame, text="Bet on Banker", variable=bet_choice, value="Banker", font=("Arial", 16))
+    banker_bet_button.pack(pady=5)
+
+    tie_bet_button = tk.Radiobutton(game_frame, text="Bet on Tie", variable=bet_choice, value="Tie", font=("Arial", 16))
+    tie_bet_button.pack(pady=5)
+
     def play_baccarat_game():
+        nonlocal user_bankroll
         bet = int(bet_entry.get())
-        if bet > current_user.bankroll:
+        if bet > user_bankroll:
             messagebox.showerror("Error", "Bet exceeds current bankroll.")
             return
 
-        player_hand, banker_hand, result = current_user.play_game(baccarat_game, casino, bet)
-        bankroll_label.config(text=f"Bankroll: ${current_user.bankroll}")
+        user = User(user_db[0], user_bankroll, user_db[1])
+        player_hand, banker_hand, result = user.play_game(baccarat_game, casino, bet, baccarat_window, bet_choice)
+
+        if result == "Player wins!" and bet_choice.get() == "Player":
+            winnings = 2 * bet
+            messagebox.showinfo("Result", f"You bet on Player and won ${winnings}!")
+        elif result == "Banker wins!" and bet_choice.get() == "Banker":
+            winnings = 2 * bet
+            messagebox.showinfo("Result", f"You bet on Banker and won ${winnings}!")
+        elif result == "It's a tie!" and bet_choice.get() == "Tie":
+            winnings = 2 * bet
+            messagebox.showinfo("Result", f"You bet on a Tie and won ${winnings}!")
+        else:
+            if result == "It's a tie!":
+                winnings = 0
+                messagebox.showinfo("Result", "It's a tie and you didn't bet on a Tie, no change to your bankroll.")
+            else:
+                winnings = -bet
+                messagebox.showinfo("Result", f"You lost your bet of ${bet}.")
+
+        # Update the bankroll in the database
+        user_bankroll += winnings
+        conn.queryExecute(f"UPDATE USER SET BALANCE = {user_bankroll} WHERE USERID = '{user_db[0]}'")
+
+        # Update the bankroll label
+        bankroll_label.config(text=f"Bankroll: ${user_bankroll}")
         player_hand_label.config(text=f"Player Hand: {player_hand}")
         banker_hand_label.config(text=f"Banker Hand: {banker_hand}")
 
@@ -2617,6 +2680,11 @@ def play_baccarat():
 
     banker_hand_label = tk.Label(hands_frame, text="Banker Hand: ", font=("Arial", 16))
     banker_hand_label.pack()
+
+    # Back button to return to the main menu
+    back_button = tk.Button(game_frame, text="Back to Main Menu", command=lambda: baccarat_window.destroy(), font=("Arial", 16))
+    back_button.pack(pady=20)
+
 
 def play_poker():
     game = PokerGame()
